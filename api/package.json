@@ -1,0 +1,47 @@
+{
+  "name": "crowdpatch-api",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "description": "CrowdPatch API — Hono on Cloudflare Workers, orchestrates Claude Managed Agents for bug-fix runs.",
+  "scripts": {
+    "dev": "wrangler dev",
+    "deploy": "wrangler deploy",
+    "typecheck": "tsc --noEmit",
+    "lint": "eslint . --max-warnings=0",
+    "lint:fix": "eslint . --fix",
+    "format": "prettier . --write",
+    "format:check": "prettier . --check",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "check": "npm run typecheck && npm run lint && npm run test && npm run format:check",
+    "cf-typegen": "wrangler types",
+    "db:create": "wrangler d1 create crowdpatch-db",
+    "db:migrate:local": "wrangler d1 migrations apply crowdpatch-db --local",
+    "db:migrate:prod": "wrangler d1 migrations apply crowdpatch-db --remote",
+    "db:seed:local": "wrangler d1 execute crowdpatch-db --local --file=./seeds/dev.sql",
+    "db:seed:prod": "wrangler d1 execute crowdpatch-db --remote --file=./seeds/dev.sql",
+    "r2:create": "wrangler r2 bucket create crowdpatch-artifacts",
+    "tail": "wrangler tail"
+  },
+  "dependencies": {
+    "@anthropic-ai/sdk": "^0.90.0",
+    "@hono/zod-validator": "^0.7.6",
+    "@octokit/core": "^7.0.6",
+    "@octokit/webhooks-methods": "^6.0.0",
+    "hono": "^4.12.14",
+    "zod": "^4.3.6"
+  },
+  "devDependencies": {
+    "@cloudflare/vitest-pool-workers": "^0.14.9",
+    "@cloudflare/workers-types": "^4.20260423.1",
+    "@eslint/js": "^10.0.1",
+    "eslint": "^10.2.1",
+    "globals": "^17.5.0",
+    "prettier": "^3.8.3",
+    "typescript": "^6.0.3",
+    "typescript-eslint": "^8.59.0",
+    "vitest": "^4.1.5",
+    "wrangler": "^4.84.1"
+  }
+}

@@ -1,0 +1,11 @@
+{
+  "name": "crowdpatch",
+  "private": true,
+  "scripts": {
+    "check": "npm --prefix api run check && npm --prefix web run check",
+    "typecheck": "npm --prefix api run typecheck && npm --prefix web run typecheck",
+    "lint": "npm --prefix api run lint && npm --prefix web run lint",
+    "test": "npm --prefix api run test && npm --prefix web run test",
+    "format:check": "npm --prefix api run format:check && npm --prefix web run format:check"
+  }
+}

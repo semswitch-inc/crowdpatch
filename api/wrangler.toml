@@ -1,0 +1,64 @@
+name = "crowdpatch-api"
+main = "src/index.ts"
+compatibility_date = "2025-11-01"
+compatibility_flags = ["nodejs_compat"]
+
+workers_dev = true
+
+# Custom domain — uncomment on Day 3 after crowdpatch.ai DNS is live on Cloudflare.
+# routes = [
+#   { pattern = "api.crowdpatch.ai/*", zone_name = "crowdpatch.ai" }
+# ]
+
+[vars]
+ENVIRONMENT = "development"
+GITHUB_DEMO_ORG = "semswitch-inc"
+DEMO_REPO_URL = "https://github.com/semswitch-inc/jsdiff-demo"
+
+# -- Durable Objects --
+# One AgentSessionDO instance per live Managed Agent session.
+# Holds upstream SSE from Anthropic, fans out to browser WebSockets with hibernation,
+# persists event log in DO SQLite, writes final state to D1 on session.status_idle.
+
+[[durable_objects.bindings]]
+name = "AGENT_SESSION_DO"
+class_name = "AgentSessionDO"
+
+[[migrations]]
+tag = "v1"
+new_sqlite_classes = ["AgentSessionDO"]
+
+# -- D1 --
+# Authoritative store for users, apps, bug reports, fix jobs, credit ledger.
+# `database_id` is a placeholder — replace after running `wrangler d1 create crowdpatch-db`.
+
+[[d1_databases]]
+binding = "DB"
+database_name = "crowdpatch-db"
+database_id = "REPLACE_ME_AFTER_wrangler_d1_create"
+migrations_dir = "migrations"
+
+# -- R2 --
+# Agent artifacts: log bundles, diff payloads, bug-report attachments/screenshots.
+
+[[r2_buckets]]
+binding = "ARTIFACTS"
+bucket_name = "crowdpatch-artifacts"
+
+# -- Queues --
+# Commented out for Day 1 — uncomment on Day 2 when we add the GitHub webhook handler.
+# [[queues.producers]]
+# binding = "WEBHOOK_QUEUE"
+# queue = "crowdpatch-webhooks"
+#
+# [[queues.consumers]]
+# queue = "crowdpatch-webhooks"
+# max_batch_size = 10
+# max_batch_timeout = 5
+
+# -- Observability --
+# Enables structured logs in the Cloudflare dashboard and `wrangler tail`.
+
+[observability]
+enabled = true
+head_sampling_rate = 1
