@@ -11,3 +11,9 @@ ANTHROPIC_API_KEY=sk-ant-api03-REPLACE_ME
 # Permissions: Contents R/W, Pull requests R/W, Issues Read.
 # Create at https://github.com/settings/personal-access-tokens/new
 GITHUB_DEMO_PAT=github_pat_REPLACE_ME
+
+# Managed Agent + Environment IDs.
+# Populated by `npm run bootstrap:anthropic` (one-shot, idempotent).
+# Restart `wrangler dev` after pasting these in.
+# ANTHROPIC_AGENT_ID=agent_01...
+# ANTHROPIC_ENVIRONMENT_ID=env_01...

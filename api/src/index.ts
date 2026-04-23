@@ -1,6 +1,9 @@
 import { Hono } from "hono";
+import { cors } from "hono/cors";
 import { DurableObject } from "cloudflare:workers";
 import Anthropic from "@anthropic-ai/sdk";
+
+import fixJobs from "./routes/fixJobs";
 
 // Bindings declared in wrangler.toml. Cloudflare injects these at runtime.
 export type Bindings = {
@@ -17,9 +20,39 @@ export type Bindings = {
   // Secrets (set via `wrangler secret put` in prod or .dev.vars locally)
   ANTHROPIC_API_KEY: string;
   GITHUB_DEMO_PAT: string;
+
+  // Managed Agent + Environment — populated by `npm run bootstrap:anthropic`
+  // (one-shot script). Empty until bootstrap runs; the /api/fix-jobs route
+  // returns 503 if either is unset.
+  ANTHROPIC_AGENT_ID: string;
+  ANTHROPIC_ENVIRONMENT_ID: string;
 };
 
 const app = new Hono<{ Bindings: Bindings }>();
+
+// CORS for browser clients hitting /api/*. Localhost dev origin + any
+// *.pages.dev origin (Cloudflare Pages preview/prod URLs).
+app.use(
+  "/api/*",
+  cors({
+    origin: (origin) => {
+      if (origin === "http://localhost:3000") return origin;
+      try {
+        const u = new URL(origin);
+        if (u.protocol === "https:" && u.hostname.endsWith(".pages.dev")) {
+          return origin;
+        }
+      } catch {
+        // not a parseable URL — fall through
+      }
+      return null;
+    },
+    allowMethods: ["GET", "POST", "OPTIONS"],
+    allowHeaders: ["Content-Type"],
+  }),
+);
+
+app.route("/api", fixJobs);
 
 app.get("/", (c) =>
   c.json({
