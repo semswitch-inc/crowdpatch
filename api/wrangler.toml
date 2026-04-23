@@ -10,6 +10,16 @@ workers_dev = true
 #   { pattern = "api.crowdpatch.ai/*", zone_name = "crowdpatch.ai" }
 # ]
 
+# Default vars — used by `wrangler dev` and by any plain `wrangler deploy`
+# that does not pass `--env`. The /debug/anthropic-agents route in src/index.ts
+# is gated on ENVIRONMENT === "development" (allow-list), so a deploy that
+# ships the default value below would also ship the debug route exposed.
+#
+# DEPLOY CONTRACT: before any non-local deploy, EITHER
+#   (a) add an `[env.staging.vars]` / `[env.production.vars]` block and deploy
+#       with `wrangler deploy --env staging` / `--env production`, OR
+#   (b) override per-deploy via `wrangler secret put ENVIRONMENT` (then enter
+#       "staging" or "production" at the prompt) before `wrangler deploy`.
 [vars]
 ENVIRONMENT = "development"
 GITHUB_DEMO_ORG = "semswitch-inc"

@@ -4,8 +4,12 @@
 --   * All ids are TEXT (app-generated ULIDs/UUIDs).
 --   * All timestamps are unix epoch seconds.
 --   * CHECK constraints gate enum-ish string columns.
---   * FK columns reference parent tables; D1 does not enforce FKs by default
---     (no PRAGMA foreign_keys = ON) — integrity lives in the app layer.
+--   * FK columns reference parent tables. D1 enforces FKs by default
+--     (equivalent to SQLite's PRAGMA foreign_keys = ON, applied per
+--     transaction). Inserting a child row with a missing parent fails with
+--     `FOREIGN KEY constraint failed: SQLITE_CONSTRAINT`. Use
+--     `PRAGMA defer_foreign_keys = on` only when a migration's intermediate
+--     state needs to temporarily bypass it (until end-of-transaction).
 --
 -- Migration discipline:
 --   This file is LOCKED after first remote apply

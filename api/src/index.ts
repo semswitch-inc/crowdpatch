@@ -33,8 +33,13 @@ app.get("/", (c) =>
 app.get("/health", (c) => c.text("ok"));
 
 // Dev-only: live verify @anthropic-ai/sdk works inside the Worker runtime
-// AND can authenticate against the Managed Agents beta API. Returns 404
-// in production.
+// AND can authenticate against the Managed Agents beta API.
+//
+// FAIL-SAFE GATING: this route is hidden (404) for any ENVIRONMENT value
+// OTHER THAN the literal string "development" — allow-list, not deny-list.
+// Deploying with ENVIRONMENT unset, misspelled, or set to "staging"/anything
+// new keeps the route disabled. To enable locally, ENVIRONMENT="development"
+// is already the wrangler.toml default for `wrangler dev`.
 //
 // Usage:
 //   npm run dev                                       # start wrangler dev
@@ -44,7 +49,7 @@ app.get("/health", (c) => c.text("ok"));
 // Requires ANTHROPIC_API_KEY in .dev.vars (locally) or
 // `wrangler secret put ANTHROPIC_API_KEY` (staging).
 app.get("/debug/anthropic-agents", async (c) => {
-  if (c.env.ENVIRONMENT === "production") {
+  if (c.env.ENVIRONMENT !== "development") {
     return c.notFound();
   }
 
