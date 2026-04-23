@@ -12,6 +12,7 @@ out/
 .wrangler/
 .dev.vars
 .dev.vars.*
+!.dev.vars.example
 wrangler.toml.bak
 
 # Env files

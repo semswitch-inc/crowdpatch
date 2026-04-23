@@ -1,0 +1,13 @@
+# Copy this file to .dev.vars and fill in real values.
+# .dev.vars is gitignored — never commit real secrets.
+# Restart `wrangler dev` after changes.
+
+# Anthropic API key — https://console.anthropic.com/settings/keys
+ANTHROPIC_API_KEY=sk-ant-api03-REPLACE_ME
+
+# GitHub fine-grained personal access token (NOT a classic ghp_... token).
+# Resource owner: semswitch-inc (the org, not your personal account).
+# Repository access: only semswitch-inc/jsdiff-demo.
+# Permissions: Contents R/W, Pull requests R/W, Issues Read.
+# Create at https://github.com/settings/personal-access-tokens/new
+GITHUB_DEMO_PAT=github_pat_REPLACE_ME
