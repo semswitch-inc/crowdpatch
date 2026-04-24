@@ -65,6 +65,18 @@ export class GitHubClient {
       html_url: response.data.html_url,
     };
   }
+
+  async getBranchHeadSha(
+    owner: string,
+    repo: string,
+    branch: string,
+  ): Promise<string> {
+    const response = await this.octokit.request(
+      "GET /repos/{owner}/{repo}/branches/{branch}",
+      { owner, repo, branch },
+    );
+    return (response.data as { commit: { sha: string } }).commit.sha;
+  }
 }
 
 // @octokit/core throws RequestError objects with a numeric .status. We check

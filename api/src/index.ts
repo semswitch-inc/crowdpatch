@@ -1,6 +1,5 @@
 import { Hono } from "hono";
 import { cors } from "hono/cors";
-import { DurableObject } from "cloudflare:workers";
 import Anthropic from "@anthropic-ai/sdk";
 
 import fixJobs from "./routes/fixJobs";
@@ -125,13 +124,9 @@ app.get("/debug/anthropic-agents", async (c) => {
 });
 
 // One AgentSessionDO instance per live Managed Agent session.
-// Day 1 stub; real implementation lands Day 2 (see .agents/plans/scaffold-plan.md §4).
-export class AgentSessionDO extends DurableObject<Bindings> {
-  fetch(_request: Request): Promise<Response> {
-    return Promise.resolve(
-      new Response("AgentSessionDO — not yet implemented", { status: 501 }),
-    );
-  }
-}
+// Implementation lives in ./durable_objects/agentSession.ts so the class stays
+// out of the Worker entrypoint. Re-exported here because wrangler.toml's
+// durable_objects.bindings looks up the class by name from the entrypoint.
+export { AgentSessionDO } from "./durable_objects/agentSession";
 
 export default app;

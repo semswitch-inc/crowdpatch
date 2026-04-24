@@ -46,6 +46,7 @@ export interface FixJobUpdate {
   error_message?: string | null;
   result_summary_json?: string | null;
   cost_credits?: number;
+  ended_reason?: string | null;
   completed_at?: number | null;
 }
 
@@ -58,6 +59,7 @@ const ALLOWED_UPDATE_KEYS: ReadonlySet<string> = new Set<keyof FixJobUpdate>([
   "error_message",
   "result_summary_json",
   "cost_credits",
+  "ended_reason",
   "completed_at",
 ]);
 
