@@ -40,6 +40,7 @@ export type Card =
       pr_url: string;
       fix_job_id: string;
       ended_reason: string;
+      summary_text: string;
       ts: number;
     }
   | {

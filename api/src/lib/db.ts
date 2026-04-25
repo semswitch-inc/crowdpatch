@@ -34,6 +34,15 @@ export interface AppRow {
   created_at: number;
 }
 
+export interface BugReportInsert {
+  id: string;
+  app_id: string;
+  reporter_name: string;
+  title: string;
+  description: string;
+  severity: "low" | "medium" | "high";
+}
+
 export interface FixJobInsert {
   id: string;
   app_id: string;
@@ -97,6 +106,31 @@ export async function getApp(
     .bind(id)
     .first<AppRow>();
   return row ?? null;
+}
+
+export async function createBugReport(
+  db: D1Database,
+  row: BugReportInsert,
+): Promise<void> {
+  // status defaults to 'open' and created_at defaults to unixepoch()
+  // via the table schema (migration 0001). FK on app_id raises
+  // SQLITE_CONSTRAINT if the parent app doesn't exist — callers should
+  // pre-validate via getApp() for a friendlier 4xx response.
+  await db
+    .prepare(
+      `INSERT INTO bug_reports
+         (id, app_id, reporter_name, title, description, severity)
+       VALUES (?, ?, ?, ?, ?, ?)`,
+    )
+    .bind(
+      row.id,
+      row.app_id,
+      row.reporter_name,
+      row.title,
+      row.description,
+      row.severity,
+    )
+    .run();
 }
 
 export async function createFixJob(

@@ -30,6 +30,7 @@ import {
   HEARTBEAT_LINE,
   formatSseEvent,
 } from "../lib/sse";
+import { buildAgentSummary } from "../lib/text";
 
 export interface StartPayload {
   fix_job_id: string;
@@ -352,8 +353,7 @@ export class AgentSessionDO extends DurableObject<Bindings> {
         base: payload.app.default_branch,
         title: `[CrowdPatch] Fix: ${payload.bug_report.title}`,
         body: buildPrBody({
-          bugReportId: payload.bug_report.id,
-          bugReportTitle: payload.bug_report.title,
+          bugReport: payload.bug_report,
           fixJobId: payload.fix_job_id,
           agentReplyText,
         }),
@@ -385,6 +385,7 @@ export class AgentSessionDO extends DurableObject<Bindings> {
         pr_url: pr.html_url,
         fix_job_id: payload.fix_job_id,
         ended_reason: "success",
+        summary_text: buildAgentSummary(agentReplyText, { maxChars: 600 }),
         ts: Date.now(),
       });
 
@@ -438,28 +439,39 @@ function nowSec(): number {
 }
 
 interface BuildPrBodyParams {
-  bugReportId: string;
-  bugReportTitle: string;
+  bugReport: BugReportRow;
   fixJobId: string;
   agentReplyText: string;
 }
 
+const PR_BODY_DESCRIPTION_CAP = 400;
+
 function buildPrBody(params: BuildPrBodyParams): string {
-  const summary = params.agentReplyText
+  const summary = buildAgentSummary(params.agentReplyText);
+  const description =
+    params.bugReport.description.length > PR_BODY_DESCRIPTION_CAP
+      ? `${params.bugReport.description.slice(0, PR_BODY_DESCRIPTION_CAP)}…`
+      : params.bugReport.description;
+  const descriptionBlock = description
     .split("\n")
-    .filter((line) => line.trim() && !line.includes("AGENT_DONE"))
-    .slice(-5)
-    .join("\n")
-    .trim();
+    .map((line) => `> ${line}`)
+    .join("\n");
 
   return `Automated fix opened by [CrowdPatch](https://crowdpatch.ai) using Anthropic's Managed Agents.
 
-**Bug report:** \`${params.bugReportId}\` — ${params.bugReportTitle}
+**Submitted report**
+- Reporter: ${params.bugReport.reporter_name}
+- Severity: ${params.bugReport.severity}
+- Title: ${params.bugReport.title}
+
+${descriptionBlock}
+
+**Bug report id:** \`${params.bugReport.id}\`
 **Fix job:** \`${params.fixJobId}\`
 
-The agent investigated the failing tests, identified the root cause, applied a surgical fix, and verified the test suite passes locally before pushing.
-
 ---
+
+The agent investigated the failing tests, identified the root cause, applied a surgical fix, and verified the test suite passes locally before pushing.
 
 <details>
 <summary>Agent's final summary</summary>
