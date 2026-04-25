@@ -33,20 +33,31 @@ type State =
 interface FixBugButtonProps {
   bugReportId: string;
   ctaLabel?: string;
+  // Pushed up to the parent on every status transition so the page-level
+  // stepper can advance to Step 4 on success and drop back to Step 3 on
+  // retry / Run another. Optional — the legacy ?bug=<id> path renders
+  // FixBugButton without a stepper and omits this.
+  onStatusChange?: (status: "idle" | "running" | "success" | "error") => void;
 }
 
 export default function FixBugButton({
   bugReportId,
   ctaLabel,
+  onStatusChange,
 }: FixBugButtonProps) {
   const [state, setState] = useState<State>({ status: "idle" });
   const closeRef = useRef<(() => void) | null>(null);
+  const showCreditChip = ctaLabel === "CrowdPatch it with Claude";
 
   useEffect(() => {
     return () => {
       closeRef.current?.();
     };
   }, []);
+
+  useEffect(() => {
+    onStatusChange?.(state.status);
+  }, [state.status, onStatusChange]);
 
   async function handleClick() {
     const apiBase = process.env.NEXT_PUBLIC_API_BASE;
@@ -159,22 +170,34 @@ export default function FixBugButton({
   /* ── IDLE ─────────────────────────────────────────────── */
   if (state.status === "idle") {
     return (
-      <button
-        type="button"
-        onClick={handleClick}
-        className="group relative inline-flex items-center gap-2 overflow-hidden rounded-lg bg-orange-500 px-6 py-3.5 text-base font-600 text-ink-black shadow-[0_0_0_1px_rgba(255,124,43,.4),0_8px_24px_-8px_rgba(255,92,10,.6)] transition-all hover:bg-orange-400 hover:shadow-[0_0_0_1px_rgba(255,154,94,.6),0_12px_32px_-8px_rgba(255,92,10,.8)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-orange-400 active:translate-y-px"
-      >
-        <span>
-          {ctaLabel ?? (
-            <>
-              Try CrowdPatch on <span className="font-mono">{bugReportId}</span>
-            </>
-          )}
-        </span>
-        <span className="transition-transform group-hover:translate-x-0.5">
-          →
-        </span>
-      </button>
+      <div className="flex flex-wrap items-center gap-3">
+        <button
+          type="button"
+          onClick={handleClick}
+          className="group relative inline-flex items-center gap-2 overflow-hidden rounded-lg bg-orange-500 px-6 py-3.5 text-base font-600 text-ink-black shadow-[0_0_0_1px_rgba(255,124,43,.4),0_8px_24px_-8px_rgba(255,92,10,.6)] transition-all hover:bg-orange-400 hover:shadow-[0_0_0_1px_rgba(255,154,94,.6),0_12px_32px_-8px_rgba(255,92,10,.8)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-orange-400 active:translate-y-px"
+        >
+          <span>
+            {ctaLabel ?? (
+              <>
+                Try CrowdPatch on{" "}
+                <span className="font-mono">{bugReportId}</span>
+              </>
+            )}
+          </span>
+          <span className="transition-transform group-hover:translate-x-0.5">
+            →
+          </span>
+        </button>
+        {showCreditChip && (
+          <span
+            className="inline-flex items-center gap-1.5 rounded-full border border-violet-500/40 bg-violet-500/[0.08] px-3 py-1 text-xs font-600 text-violet-100"
+            title="CrowdPatch demo economy — no real ledger debit yet."
+          >
+            <span className="h-1.5 w-1.5 rounded-full bg-violet-400 shadow-[0_0_6px] shadow-violet-400" />
+            Demo credits: 100 · This patch uses 1
+          </span>
+        )}
+      </div>
     );
   }
 

@@ -20,10 +20,18 @@ const BUG_001_DEFAULTS = {
 type FieldErrors = Partial<Record<keyof typeof BUG_001_DEFAULTS, string>>;
 
 interface BugReportFormProps {
+  // The app the bug is being filed against. Required (non-nullable) so the
+  // form cannot accidentally fall back to the server's default app_id —
+  // every bug submitted through this form must travel with the app the user
+  // just connected in Step 1.
+  appId: string;
   onSubmitted: (bug: SubmittedBug) => void;
 }
 
-export default function BugReportForm({ onSubmitted }: BugReportFormProps) {
+export default function BugReportForm({
+  appId,
+  onSubmitted,
+}: BugReportFormProps) {
   const [reporterName, setReporterName] = useState(
     BUG_001_DEFAULTS.reporter_name,
   );
@@ -62,6 +70,7 @@ export default function BugReportForm({ onSubmitted }: BugReportFormProps) {
           description: description.trim(),
           reporter_name: reporterName.trim(),
           severity,
+          app_id: appId,
         }),
       });
       if (!res.ok) {

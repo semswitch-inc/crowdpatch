@@ -5,12 +5,19 @@ import Image from "next/image";
 import { useSearchParams } from "next/navigation";
 import { Suspense, useState } from "react";
 
+import AppSubmissionForm from "@/components/AppSubmissionForm";
 import BugReportForm from "@/components/BugReportForm";
+import ConnectedAppCard from "@/components/ConnectedAppCard";
 import FixBugButton from "@/components/FixBugButton";
+import StepIndicator from "@/components/StepIndicator";
 import SubmittedBugCard from "@/components/SubmittedBugCard";
+import type { ConnectedApp } from "@/types/connected-app";
 import type { SubmittedBug } from "@/types/submitted-bug";
 
 const REPO_URL = "https://github.com/semswitch-inc/crowdpatch";
+
+type Phase = "connect" | "bug" | "fix";
+type FixStatus = "idle" | "running" | "success" | "error";
 
 // useSearchParams is a Client-Component hook in Next 16 and MUST be inside a
 // <Suspense> boundary or the production build fails with "Missing Suspense
@@ -19,25 +26,79 @@ const REPO_URL = "https://github.com/semswitch-inc/crowdpatch";
 function HeroExperience() {
   const params = useSearchParams();
   const urlBugId = params.get("bug");
+  const [phase, setPhase] = useState<Phase>("connect");
+  const [connected, setConnected] = useState<ConnectedApp | null>(null);
   const [submitted, setSubmitted] = useState<SubmittedBug | null>(null);
+  const [fixStatus, setFixStatus] = useState<FixStatus>("idle");
 
-  // Backup demo path: /?bug=<id> short-circuits the form and renders the
-  // original button-only flow (Day 4 behavior preserved exactly).
+  // Backup demo path: /?bug=<id> short-circuits the entire stepper and
+  // renders the original button-only flow exactly like Day 4. No app form,
+  // no bug form, no stepper, no credit chip — preserved as the
+  // recording-day safety net.
   if (urlBugId) {
     return <FixBugButton bugReportId={urlBugId} />;
   }
 
-  if (!submitted) {
-    return <BugReportForm onSubmitted={setSubmitted} />;
-  }
+  const activeStep: 1 | 2 | 3 | 4 =
+    phase === "connect"
+      ? 1
+      : phase === "bug"
+        ? 2
+        : fixStatus === "success"
+          ? 4
+          : 3;
 
   return (
     <div className="flex w-full flex-col gap-6">
-      <SubmittedBugCard bug={submitted} onEdit={() => setSubmitted(null)} />
-      <FixBugButton
-        bugReportId={submitted.id}
-        ctaLabel="CrowdPatch it with Claude"
-      />
+      <StepIndicator active={activeStep} />
+
+      {phase === "connect" && (
+        <AppSubmissionForm
+          onConnected={(c) => {
+            setConnected(c);
+            setPhase("bug");
+          }}
+        />
+      )}
+
+      {phase === "bug" && connected && (
+        <>
+          <ConnectedAppCard
+            app={connected}
+            onEdit={() => {
+              setConnected(null);
+              setPhase("connect");
+            }}
+          />
+          <BugReportForm
+            appId={connected.id}
+            onSubmitted={(b) => {
+              setSubmitted(b);
+              setFixStatus("idle");
+              setPhase("fix");
+            }}
+          />
+        </>
+      )}
+
+      {phase === "fix" && connected && submitted && (
+        <>
+          <ConnectedAppCard app={connected} />
+          <SubmittedBugCard
+            bug={submitted}
+            onEdit={() => {
+              setSubmitted(null);
+              setFixStatus("idle");
+              setPhase("bug");
+            }}
+          />
+          <FixBugButton
+            bugReportId={submitted.id}
+            ctaLabel="CrowdPatch it with Claude"
+            onStatusChange={setFixStatus}
+          />
+        </>
+      )}
     </div>
   );
 }
