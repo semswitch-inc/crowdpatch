@@ -222,15 +222,21 @@ fixJobs.get("/fix-jobs/:id/events", async (c) => {
 });
 
 // POST /api/fix-jobs/:id/recover — finalizes a fix-job whose DO hibernated
-// mid-session (stuck in 'running' with no PR despite the agent succeeding
-// on Anthropic's side). Idempotent: safe to call multiple times.
+// mid-session OR whose Anthropic stream connection dropped before AGENT_DONE
+// landed (so the DO mislabelled the job 'failed'/'agent_error' even though
+// the agent pushed the branch on its side). Idempotent: safe to call
+// multiple times.
 //
 // Logic:
-//   - status='succeeded' → return current state (no-op)
-//   - status='failed' or 'cancelled' → return current state (don't revive)
-//   - status in ('running','pending') → check GitHub:
+//   - status='succeeded' AND pr_url present → return as-is (truly idempotent)
+//   - status='cancelled' → return as-is (deliberate cancel; never resurrect)
+//   - status in ('pending','running','failed','succeeded-without-pr_url')
+//     → check GitHub:
 //       - branch exists + PR exists → adopt that PR, mark succeeded
 //       - branch exists + no PR     → open PR, mark succeeded
+//       - branch missing + status was already 'failed' → return failed as-is
+//                                                        (do NOT rewrite the
+//                                                        existing ended_reason)
 //       - branch missing + young    → return 202 still_running (NO DB update)
 //       - branch missing + old      → mark failed agent_no_push
 //
@@ -271,21 +277,40 @@ fixJobs.post("/fix-jobs/:id/recover", async (c) => {
     return c.json({ error: "fix_job not found" }, 404);
   }
 
-  // Already terminal → return as-is. Recovery is idempotent.
-  if (
-    job.status === "succeeded" ||
-    job.status === "failed" ||
-    job.status === "cancelled"
-  ) {
+  // Truly idempotent: if we already have a successful outcome with a PR,
+  // return as-is. (Without pr_url the row is in an inconsistent state, so
+  // fall through to GitHub for branch adoption.)
+  if (job.status === "succeeded" && job.pr_url) {
     return c.json({
-      status: job.status,
+      status: "succeeded",
       pr_url: job.pr_url,
       recovered: false,
-      reason: "already_terminal",
+      reason: "already_succeeded",
+    });
+  }
+
+  // Cancelled is a deliberate end state; do not resurrect.
+  if (job.status === "cancelled") {
+    return c.json({
+      status: "cancelled",
+      pr_url: job.pr_url,
+      recovered: false,
+      reason: "cancelled_terminal",
     });
   }
 
   if (!job.branch_name) {
+    // No branch recorded. If already failed, respect the existing terminal
+    // state; otherwise this is a structural problem (running/pending job
+    // never got far enough to assign a branch).
+    if (job.status === "failed") {
+      return c.json({
+        status: "failed",
+        pr_url: job.pr_url,
+        recovered: false,
+        reason: "no_branch_recorded",
+      });
+    }
     return c.json(
       { error: "fix_job has no branch_name; nothing to recover" },
       409,
@@ -313,6 +338,18 @@ fixJobs.post("/fix-jobs/:id/recover", async (c) => {
   );
 
   if (!branchExists) {
+    // Job was already marked failed by the DO and the branch isn't on
+    // origin either — leave the row's existing ended_reason intact rather
+    // than rewriting it to agent_no_push.
+    if (job.status === "failed") {
+      return c.json({
+        status: "failed",
+        pr_url: job.pr_url,
+        recovered: false,
+        reason: "branch_missing_already_failed",
+      });
+    }
+
     const nowSec = Math.floor(Date.now() / 1000);
     const ageSec = job.started_at !== null ? nowSec - job.started_at : null;
 
