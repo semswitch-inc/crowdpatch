@@ -37,6 +37,15 @@ export type Bindings = {
   ANTHROPIC_AGENT_ID_B?: string;
   ANTHROPIC_AGENT_ID_C?: string;
   ANTHROPIC_AGENT_ID_D?: string;
+
+  // Optional pre-existing Anthropic Managed Agents memory store ID, attached
+  // as a read-only `resources` entry to every session if set. Unset → no
+  // attachment. The SDK shape for memory_store-as-a-session-resource is not
+  // yet exposed by @anthropic-ai/sdk@^0.90.0 (verified: only github_repository
+  // and file resource variants exist), so the attachment helper currently
+  // warn-logs and skips when this is set. Wiring stays so the env binding +
+  // intent are documented for the day the SDK ships the variant.
+  ANTHROPIC_MEMORY_STORE_ID?: string;
 };
 
 const app = new Hono<{ Bindings: Bindings }>();

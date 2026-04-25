@@ -20,6 +20,7 @@ import {
   getAnthropicClient,
 } from "../lib/anthropic";
 import { buildAgentPrompt } from "../lib/agentPrompt";
+import { extractCumulativeUsage } from "../lib/anthropicUsage";
 import { refundForFixJob } from "../lib/credits";
 import type { AppRow, BugReportRow } from "../lib/db";
 import { updateFixJob } from "../lib/db";
@@ -240,6 +241,11 @@ export class AgentSessionDO extends DurableObject<Bindings> {
 
     const client = getAnthropicClient(this.env.ANTHROPIC_API_KEY);
     const github = new GitHubClient(this.env.GITHUB_DEMO_PAT);
+    // Hoisted above try so the finally block can run cumulative-usage
+    // retrieve + archive on EVERY terminal path (success, agent_no_push,
+    // timeout, generic catch). On the malformed-URL path above this method
+    // returns early before the session is created, so this whole block is
+    // bypassed and the cleanup is a no-op — correct, no session existed.
     let sessionId: string | null = null;
     let agentReplyText = "";
 
@@ -263,6 +269,10 @@ export class AgentSessionDO extends DurableObject<Bindings> {
     try {
       // Open Managed Agent session with the repo mounted via authorization_token.
       // The PAT lives ONLY in the resource attachment; never in the prompt.
+      // Optional memory_store resource is appended via helper — if the SDK
+      // doesn't yet expose the variant (verified ^0.90.0: only github_repository
+      // and file are supported), the helper warn-logs and returns []. The env
+      // binding stays so the moment the SDK ships memory_store, we add it.
       const session = await client.beta.sessions.create({
         agent: payload.anthropic_agent_id,
         environment_id: payload.anthropic_environment_id,
@@ -273,6 +283,7 @@ export class AgentSessionDO extends DurableObject<Bindings> {
             authorization_token: this.env.GITHUB_DEMO_PAT,
             mount_path: REPO_MOUNT_PATH,
           },
+          ...buildOptionalMemoryStoreResource(this.env),
         ],
         title: `fix-job ${payload.fix_job_id}`,
         metadata: {
@@ -282,8 +293,20 @@ export class AgentSessionDO extends DurableObject<Bindings> {
         },
       });
       sessionId = session.id;
+      // Stamp session id + agent model.id + agent version on the row so the
+      // GET /api/fix-jobs/:id endpoint can surface "this PR was opened by
+      // claude-opus-4-7 v3 acting as agent variant B". Both model and version
+      // come from the create() response (SDK shape verified: agent.model.id is
+      // a string, agent.version is a number — coerced to TEXT for storage).
+      const agentModel = session.agent.model.id;
+      const agentVersion =
+        typeof session.agent.version === "number"
+          ? String(session.agent.version)
+          : null;
       await updateFixJob(this.env.DB, payload.fix_job_id, {
         anthropic_session_id: session.id,
+        anthropic_agent_model: agentModel,
+        anthropic_agent_version: agentVersion,
       });
 
       const userMessage = buildAgentPrompt({
@@ -457,15 +480,9 @@ export class AgentSessionDO extends DurableObject<Bindings> {
       const msg = redact(err instanceof Error ? err.message : String(err));
       const ended_reason = msg.includes("timeout") ? "timeout" : "agent_error";
 
-      // Best-effort: archive the session if we made one
-      if (sessionId) {
-        try {
-          await client.beta.sessions.archive(sessionId);
-        } catch {
-          // best-effort cleanup
-        }
-      }
-
+      // Refund BEFORE the SSE error_event broadcasts — same ordering rule as
+      // the agent_no_push and malformed-URL paths above. Archive moved to
+      // finally so it covers success + every failure path uniformly.
       await safeRefund(this.env.DB, payload.fix_job_id);
 
       this.persistEvent({
@@ -484,6 +501,43 @@ export class AgentSessionDO extends DurableObject<Bindings> {
 
       this.markComplete();
     } finally {
+      // CUMULATIVE USAGE + ARCHIVE — runs on every terminal exit path that
+      // got far enough to create a session. On the malformed-URL early-return
+      // above this is never reached; on every other path (success,
+      // agent_no_push, timeout, generic catch) sessionId is set and we both
+      // (a) persist totals via sessions.retrieve() and (b) archive the
+      // session. Both are best-effort: a retrieval or archive failure must
+      // never mask the original terminal outcome (status/refund already
+      // landed by this point).
+      //
+      // Order matters: retrieve BEFORE archive — the API may not allow
+      // retrieve on an archived session (unverified; the catch wrapper makes
+      // either ordering safe).
+      if (sessionId !== null) {
+        try {
+          const finalSession = await client.beta.sessions.retrieve(sessionId);
+          const totals = extractCumulativeUsage(finalSession.usage);
+          await updateFixJob(this.env.DB, payload.fix_job_id, {
+            total_input_tokens: totals.input,
+            total_output_tokens: totals.output,
+            total_cache_creation_input_tokens: totals.cacheCreation,
+            total_cache_read_input_tokens: totals.cacheRead,
+          });
+        } catch (retrieveErr) {
+          // Diagnostic only; UI renders `—` for nulls.
+          console.warn(
+            "[agent-session] cumulative usage retrieval failed",
+            retrieveErr,
+          );
+        }
+
+        try {
+          await client.beta.sessions.archive(sessionId);
+        } catch (archiveErr) {
+          console.warn("[agent-session] archive failed", archiveErr);
+        }
+      }
+
       // Persist usage stats from the first model_request_end on every
       // terminal path (success, agent_no_push, timeout, agent_error).
       // Best-effort — don't let a usage-write failure mask the real outcome.
@@ -504,6 +558,23 @@ export class AgentSessionDO extends DurableObject<Bindings> {
       }
     }
   }
+}
+
+// Build the optional memory_store resource entry for sessions.create. Returns
+// [] when ANTHROPIC_MEMORY_STORE_ID is unset (no attachment), OR when the
+// SDK shape for memory_store-as-a-session-resource is not yet exposed.
+//
+// SDK ^0.90.0 verification: SessionCreateParams.resources only accepts
+// BetaManagedAgentsGitHubRepositoryResourceParams | BetaManagedAgentsFileResourceParams.
+// No memory_store variant exists at this version, so we warn-log and skip.
+// When the SDK ships the variant, replace the warn with the verified entry
+// shape and remove the early return — the env binding stays unchanged.
+function buildOptionalMemoryStoreResource(env: Bindings): never[] {
+  if (!env.ANTHROPIC_MEMORY_STORE_ID) return [];
+  console.warn(
+    "[agent-session] ANTHROPIC_MEMORY_STORE_ID set but @anthropic-ai/sdk@^0.90.0 does not yet expose memory_store as a session resource; skipping attachment",
+  );
+  return [];
 }
 
 function nowSec(): number {

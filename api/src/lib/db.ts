@@ -74,6 +74,13 @@ export interface FixJobInsert {
   // of a hardcoded constant — keeps refund correctness if pricing ever
   // diverges per-app or per-variant.
   cost_credits: number;
+  // Resolved by the route handler from env vars (or per-variant secrets)
+  // before insert. Persisted on the row so the audit trail "which agent +
+  // environment ran this job" survives a future env-var rotation. Both are
+  // already columns on fix_jobs (migration 0001); pre-migration-0005 inserts
+  // simply left them NULL.
+  anthropic_agent_id: string | null;
+  anthropic_environment_id: string | null;
 }
 
 export interface CreditLedgerRow {
@@ -118,6 +125,18 @@ export interface FixJobUpdate {
   first_cache_read_input_tokens?: number | null;
   first_input_tokens?: number | null;
   first_output_tokens?: number | null;
+  // Cumulative session-level totals from client.beta.sessions.retrieve()
+  // called inside the AgentSessionDO finally block. Set BEFORE archive so
+  // the GET /api/fix-jobs/:id endpoint can surface them to the UI. Migration
+  // 0005 added these columns; older rows return NULL.
+  total_input_tokens?: number | null;
+  total_output_tokens?: number | null;
+  total_cache_creation_input_tokens?: number | null;
+  total_cache_read_input_tokens?: number | null;
+  // Resolved from session.create() response: agent.model.id and agent.version.
+  // NULL if the SDK doesn't expose those fields at this version.
+  anthropic_agent_model?: string | null;
+  anthropic_agent_version?: string | null;
 }
 
 const ALLOWED_UPDATE_KEYS: ReadonlySet<string> = new Set<keyof FixJobUpdate>([
@@ -135,6 +154,12 @@ const ALLOWED_UPDATE_KEYS: ReadonlySet<string> = new Set<keyof FixJobUpdate>([
   "first_cache_read_input_tokens",
   "first_input_tokens",
   "first_output_tokens",
+  "total_input_tokens",
+  "total_output_tokens",
+  "total_cache_creation_input_tokens",
+  "total_cache_read_input_tokens",
+  "anthropic_agent_model",
+  "anthropic_agent_version",
 ]);
 
 export async function getBugReport(
@@ -229,8 +254,9 @@ export async function createFixJob(
       .prepare(
         `INSERT INTO fix_jobs
            (id, app_id, bug_report_ids_json, branch_name, status,
-            started_at, created_at, updated_at, agent_variant, cost_credits)
-         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+            started_at, created_at, updated_at, agent_variant, cost_credits,
+            anthropic_agent_id, anthropic_environment_id)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
       )
       .bind(
         job.id,
@@ -243,6 +269,8 @@ export async function createFixJob(
         now,
         job.agent_variant,
         job.cost_credits,
+        job.anthropic_agent_id,
+        job.anthropic_environment_id,
       ),
     ...bugReportIds.map((bugReportId) =>
       db

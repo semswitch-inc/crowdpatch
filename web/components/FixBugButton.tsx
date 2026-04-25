@@ -4,7 +4,9 @@ import { useEffect, useRef, useState } from "react";
 
 import EventLog from "@/components/EventLog";
 import { subscribeToFixJob } from "@/lib/eventStream";
+import { pollFixJobUntilTotals } from "@/lib/fixJobs";
 import type { Card } from "@/types/cards";
+import type { FixJobSummary } from "@/types/fix-job";
 
 // Stable hint mirroring api/src/lib/credits.ts PATCH_COST. The API is the
 // source of truth at charge time; this constant only labels the post-refund
@@ -58,11 +60,17 @@ export default function FixBugButton({
 }: FixBugButtonProps) {
   const [state, setState] = useState<State>({ status: "idle" });
   const [refundedAmount, setRefundedAmount] = useState<number | null>(null);
+  const [usage, setUsage] = useState<FixJobSummary | null>(null);
   const closeRef = useRef<(() => void) | null>(null);
+  // AbortController for the post-terminal pollFixJobUntilTotals call.
+  // Cancelled on unmount, on Run another / Retry, and before starting a
+  // new fix-job — prevents a stale poll from clobbering fresh state.
+  const usageAbortRef = useRef<AbortController | null>(null);
 
   useEffect(() => {
     return () => {
       closeRef.current?.();
+      usageAbortRef.current?.abort();
     };
   }, []);
 
@@ -144,6 +152,7 @@ export default function FixBugButton({
         // Recovery may have re-charged a previously-refunded job — refresh
         // so the balance chip reflects the truth.
         onBalanceShouldRefresh?.();
+        startUsagePoll(apiBase, after.fixJobId);
       } else if (data.status === "failed") {
         closeRef.current?.();
         closeRef.current = null;
@@ -159,6 +168,7 @@ export default function FixBugButton({
         });
         // Recovery refunded the failed job; refresh to reveal the +5.
         onBalanceShouldRefresh?.();
+        startUsagePoll(apiBase, after.fixJobId);
       }
       // "still_running" → keep waiting; next probe in POLL_INTERVAL_MS.
     };
@@ -170,6 +180,21 @@ export default function FixBugButton({
     // page render and effectively reset the watchdog timer.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [runningFixJobId]);
+
+  // Kick off the post-terminal usage poll. Cancels any prior poll first so
+  // overlapping clicks (e.g. fast Retry → new run completes → old poll still
+  // alive) can't write a stale FixJobSummary into `usage`.
+  function startUsagePoll(apiBase: string, fixJobId: string) {
+    usageAbortRef.current?.abort();
+    const ctrl = new AbortController();
+    usageAbortRef.current = ctrl;
+    void pollFixJobUntilTotals(apiBase, fixJobId, ctrl.signal).then(
+      (summary) => {
+        if (ctrl.signal.aborted) return;
+        setUsage(summary);
+      },
+    );
+  }
 
   async function handleClick() {
     const apiBase = process.env.NEXT_PUBLIC_API_BASE;
@@ -185,6 +210,8 @@ export default function FixBugButton({
 
     const startTs = Date.now();
     setRefundedAmount(null);
+    setUsage(null);
+    usageAbortRef.current?.abort();
     setState({ status: "running", fixJobId: "", cards: [], startTs });
 
     try {
@@ -253,6 +280,9 @@ export default function FixBugButton({
           // Charge stays in effect on success — refresh keeps the chip
           // accurate in case the user had stale state.
           onBalanceShouldRefresh?.();
+          // Fetch the fix-job row with backoff to bridge the "DO finally
+          // writes total_*_tokens AFTER the terminal SSE" race.
+          startUsagePoll(apiBase, data.fix_job_id);
         },
         onAppError: (data) => {
           // do_start_failed never reaches the DO so was never charged →
@@ -275,6 +305,15 @@ export default function FixBugButton({
           // Refund landed server-side BEFORE the SSE event was emitted —
           // refresh now reveals the +5.
           onBalanceShouldRefresh?.();
+          // Same race as the success path — usage write happens in finally.
+          // do_start_failed never created a session, so no totals exist;
+          // skip the poll for that ended_reason to avoid 4 wasted GETs.
+          const cur = stateRef.current;
+          const fid =
+            cur.status === "running" && cur.fixJobId ? cur.fixJobId : null;
+          if (fid && data.ended_reason !== "do_start_failed") {
+            startUsagePoll(apiBase, fid);
+          }
         },
         onTransportError: () => {
           if (typeof console !== "undefined") {
@@ -379,6 +418,7 @@ export default function FixBugButton({
             →
           </span>
         </a>
+        <UsageChip usage={usage} />
         <div className="flex items-center gap-3">
           <span className="font-mono text-xs text-ink-300">
             fix_job_id: <span className="text-ink-100">{state.fixJobId}</span>
@@ -412,6 +452,7 @@ export default function FixBugButton({
           Refunded {String(refundedAmount)} credits
         </span>
       )}
+      {usage && <UsageChip usage={usage} />}
       <button
         type="button"
         onClick={reset}
@@ -456,5 +497,40 @@ function Spinner() {
       aria-label="Loading"
       className="inline-block h-4 w-4 animate-spin rounded-full border-2 border-violet-500/30 border-t-violet-300"
     />
+  );
+}
+
+// Compact monospace chip showing cumulative session usage retrieved by the
+// AgentSessionDO finally block via sessions.retrieve(). Each token/cache
+// field renders `—` if null (poll cap exhausted before the DO persisted) so
+// the structure stays consistent. Cost is always populated (stamped at row
+// creation, not session-side telemetry).
+function UsageChip({ usage }: { usage: FixJobSummary | null }) {
+  if (!usage) {
+    // Pre-poll-resolution placeholder. Same structure so the panel doesn't
+    // shift when the data lands.
+    return (
+      <span className="font-mono text-xs text-ink-300">
+        tokens: <span className="text-ink-200">…</span> · cache:{" "}
+        <span className="text-ink-200">…</span>
+      </span>
+    );
+  }
+  const fmt = (n: number | null) => (n === null ? "—" : n.toLocaleString());
+  return (
+    <span className="font-mono text-xs text-ink-300">
+      tokens:{" "}
+      <span className="text-ink-100">{fmt(usage.total_input_tokens)}</span> in /{" "}
+      <span className="text-ink-100">{fmt(usage.total_output_tokens)}</span> out
+      · cache:{" "}
+      <span className="text-ink-100">
+        {fmt(usage.total_cache_creation_input_tokens)}
+      </span>{" "}
+      created /{" "}
+      <span className="text-ink-100">
+        {fmt(usage.total_cache_read_input_tokens)}
+      </span>{" "}
+      read · <span className="text-lime-200">{usage.cost_credits}</span> credits
+    </span>
   );
 }

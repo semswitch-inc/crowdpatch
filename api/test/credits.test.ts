@@ -85,6 +85,8 @@ async function makeFixJob(): Promise<string> {
       started_at: Math.floor(Date.now() / 1000),
       agent_variant: null,
       cost_credits: PATCH_COST,
+      anthropic_agent_id: null,
+      anthropic_environment_id: null,
     },
     [],
   );

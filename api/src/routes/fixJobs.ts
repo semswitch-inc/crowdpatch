@@ -177,6 +177,12 @@ fixJobs.post("/fix-jobs", zValidator("json", PostBody), async (c) => {
       started_at: Math.floor(Date.now() / 1000),
       agent_variant: agent_variant ?? null,
       cost_credits: PATCH_COST,
+      // Audit trail: stamp which (agent, environment) ran this job. Already
+      // resolved above (defaultAgentId or per-variant secret + environmentId);
+      // persisting them here means a future env-var rotation doesn't lose the
+      // historical mapping.
+      anthropic_agent_id: agentId,
+      anthropic_environment_id: environmentId,
     },
     [bug_report_id],
   );
@@ -270,6 +276,63 @@ async function markFixJobDoStartFailed(
     completed_at: Math.floor(Date.now() / 1000),
   });
 }
+
+// GET /api/fix-jobs/:id — return the fix_jobs row + telemetry. Used by the
+// web client AFTER the terminal SSE event to surface cumulative session
+// usage (input/output/cache tokens) and the persisted agent + environment
+// + model + version IDs. Polled with backoff because the DO writes
+// total_*_tokens inside the runAgent finally block AFTER the terminal SSE
+// has already been broadcast — so the first GET can race the persistence.
+fixJobs.get("/fix-jobs/:id", async (c) => {
+  const fixJobId = c.req.param("id");
+  if (!ULID_RE.test(fixJobId)) {
+    return c.json({ error: "invalid fix_job_id" }, 400);
+  }
+
+  const row = await c.env.DB.prepare(
+    `SELECT id, status, branch_name, pr_url, ended_reason,
+            agent_variant,
+            anthropic_agent_id, anthropic_environment_id,
+            anthropic_agent_model, anthropic_agent_version,
+            anthropic_session_id,
+            total_input_tokens, total_output_tokens,
+            total_cache_creation_input_tokens, total_cache_read_input_tokens,
+            first_input_tokens, first_output_tokens,
+            first_cache_creation_input_tokens, first_cache_read_input_tokens,
+            started_at, completed_at, cost_credits
+       FROM fix_jobs WHERE id = ?`,
+  )
+    .bind(fixJobId)
+    .first<{
+      id: string;
+      status: string;
+      branch_name: string | null;
+      pr_url: string | null;
+      ended_reason: string | null;
+      agent_variant: string | null;
+      anthropic_agent_id: string | null;
+      anthropic_environment_id: string | null;
+      anthropic_agent_model: string | null;
+      anthropic_agent_version: string | null;
+      anthropic_session_id: string | null;
+      total_input_tokens: number | null;
+      total_output_tokens: number | null;
+      total_cache_creation_input_tokens: number | null;
+      total_cache_read_input_tokens: number | null;
+      first_input_tokens: number | null;
+      first_output_tokens: number | null;
+      first_cache_creation_input_tokens: number | null;
+      first_cache_read_input_tokens: number | null;
+      started_at: number | null;
+      completed_at: number | null;
+      cost_credits: number;
+    }>();
+  if (!row) {
+    return c.json({ error: "fix_job not found" }, 404);
+  }
+
+  return c.json(row);
+});
 
 // SSE stream of agent events for a given fix_job_id.
 // Browser uses native EventSource (GET-only); Worker proxies to DO /subscribe.

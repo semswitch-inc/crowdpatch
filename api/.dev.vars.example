@@ -26,3 +26,11 @@ GITHUB_DEMO_PAT=github_pat_REPLACE_ME
 # Restart `wrangler dev` after pasting these in.
 # ANTHROPIC_AGENT_ID=agent_01...
 # ANTHROPIC_ENVIRONMENT_ID=env_01...
+
+# OPTIONAL: pre-existing Memory Store ID, attached read-only to every session.
+# Unset = no attachment (default). Per-app `agent_notes` keeps working as the
+# fallback prompt-context channel either way. The SDK's session.resources
+# array does not yet expose a memory_store variant, so the runtime currently
+# warn-logs and skips the attachment when this is set — the env binding is
+# wired so it'll work the moment the SDK ships the resource type.
+# ANTHROPIC_MEMORY_STORE_ID=ms_01...
