@@ -20,6 +20,7 @@ type State =
       cards: Card[];
       startTs: number;
       prUrl: string;
+      summaryText: string;
     }
   | {
       status: "error";
@@ -31,9 +32,13 @@ type State =
 
 interface FixBugButtonProps {
   bugReportId: string;
+  ctaLabel?: string;
 }
 
-export default function FixBugButton({ bugReportId }: FixBugButtonProps) {
+export default function FixBugButton({
+  bugReportId,
+  ctaLabel,
+}: FixBugButtonProps) {
   const [state, setState] = useState<State>({ status: "idle" });
   const closeRef = useRef<(() => void) | null>(null);
 
@@ -105,6 +110,7 @@ export default function FixBugButton({ bugReportId }: FixBugButtonProps) {
               cards,
               startTs: ts,
               prUrl: data.pr_url,
+              summaryText: data.summary_text,
             };
           });
           closeRef.current = null;
@@ -159,7 +165,11 @@ export default function FixBugButton({ bugReportId }: FixBugButtonProps) {
         className="group relative inline-flex items-center gap-2 overflow-hidden rounded-lg bg-orange-500 px-6 py-3.5 text-base font-600 text-ink-black shadow-[0_0_0_1px_rgba(255,124,43,.4),0_8px_24px_-8px_rgba(255,92,10,.6)] transition-all hover:bg-orange-400 hover:shadow-[0_0_0_1px_rgba(255,154,94,.6),0_12px_32px_-8px_rgba(255,92,10,.8)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-orange-400 active:translate-y-px"
       >
         <span>
-          Try CrowdPatch on <span className="font-mono">{bugReportId}</span>
+          {ctaLabel ?? (
+            <>
+              Try CrowdPatch on <span className="font-mono">{bugReportId}</span>
+            </>
+          )}
         </span>
         <span className="transition-transform group-hover:translate-x-0.5">
           →
@@ -194,8 +204,19 @@ export default function FixBugButton({ bugReportId }: FixBugButtonProps) {
 
   /* ── SUCCESS ──────────────────────────────────────────── */
   if (state.status === "success") {
+    const trimmedSummary = state.summaryText.trim();
     return (
       <div className="flex w-full flex-col gap-4">
+        {trimmedSummary && (
+          <blockquote className="rounded-lg border-l-4 border-lime-500/60 bg-lime-500/[0.08] px-4 py-3 text-sm text-lime-100">
+            <div className="mb-1 text-xs font-600 uppercase tracking-[0.12em] text-lime-200">
+              What Claude changed
+            </div>
+            <pre className="whitespace-pre-wrap break-words font-sans text-sm text-lime-50">
+              {trimmedSummary}
+            </pre>
+          </blockquote>
+        )}
         <a
           href={state.prUrl}
           target="_blank"

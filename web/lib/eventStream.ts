@@ -17,6 +17,7 @@ export type CompleteHandler = (data: {
   pr_url: string;
   fix_job_id: string;
   ended_reason: string;
+  summary_text: string;
 }) => void;
 export type AppErrorHandler = (data: {
   label: string;
@@ -50,12 +51,15 @@ export function subscribeToFixJob(
 
   es.addEventListener("complete", (e) => {
     try {
-      const data = JSON.parse((e as MessageEvent).data) as {
+      const raw = JSON.parse((e as MessageEvent).data) as {
         pr_url: string;
         fix_job_id: string;
         ended_reason: string;
+        summary_text?: string;
       };
-      handlers.onComplete(data);
+      // Older persisted complete events (Day 4 and earlier) lack summary_text;
+      // default to empty string so the success card just hides the block.
+      handlers.onComplete({ ...raw, summary_text: raw.summary_text ?? "" });
     } catch {
       // ignore malformed payload
     } finally {

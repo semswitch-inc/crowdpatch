@@ -3,9 +3,12 @@
 import Link from "next/link";
 import Image from "next/image";
 import { useSearchParams } from "next/navigation";
-import { Suspense } from "react";
+import { Suspense, useState } from "react";
 
+import BugReportForm from "@/components/BugReportForm";
 import FixBugButton from "@/components/FixBugButton";
+import SubmittedBugCard from "@/components/SubmittedBugCard";
+import type { SubmittedBug } from "@/types/submitted-bug";
 
 const REPO_URL = "https://github.com/semswitch-inc/crowdpatch";
 
@@ -13,10 +16,30 @@ const REPO_URL = "https://github.com/semswitch-inc/crowdpatch";
 // <Suspense> boundary or the production build fails with "Missing Suspense
 // boundary with useSearchParams". See web/AGENTS.md for the wider Next-16
 // caveat about training-data drift.
-function FixBugButtonFromQuery() {
+function HeroExperience() {
   const params = useSearchParams();
-  const bugId = params.get("bug") ?? "bug_001";
-  return <FixBugButton bugReportId={bugId} />;
+  const urlBugId = params.get("bug");
+  const [submitted, setSubmitted] = useState<SubmittedBug | null>(null);
+
+  // Backup demo path: /?bug=<id> short-circuits the form and renders the
+  // original button-only flow (Day 4 behavior preserved exactly).
+  if (urlBugId) {
+    return <FixBugButton bugReportId={urlBugId} />;
+  }
+
+  if (!submitted) {
+    return <BugReportForm onSubmitted={setSubmitted} />;
+  }
+
+  return (
+    <div className="flex w-full flex-col gap-6">
+      <SubmittedBugCard bug={submitted} onEdit={() => setSubmitted(null)} />
+      <FixBugButton
+        bugReportId={submitted.id}
+        ctaLabel="CrowdPatch it with Claude"
+      />
+    </div>
+  );
 }
 
 export default function Home() {
@@ -66,7 +89,7 @@ export default function Home() {
             <div className="font-mono text-sm text-ink-300">Loading…</div>
           }
         >
-          <FixBugButtonFromQuery />
+          <HeroExperience />
         </Suspense>
 
         {/* ── How this works ─────────────────────────────── */}
