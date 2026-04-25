@@ -59,6 +59,97 @@ export default function FixBugButton({
     onStatusChange?.(state.status);
   }, [state.status, onStatusChange]);
 
+  // Watchdog for Cloudflare Durable Object hibernation. The DO that owns the
+  // agent session can be evicted from memory mid-run (the SDK stream stops
+  // delivering events to us, and our setTimeout-based 10min timeout won't
+  // fire in that state). When SSE goes quiet for QUIET_THRESHOLD_MS, we poll
+  // POST /api/fix-jobs/:id/recover. Recovery is non-destructive for young
+  // jobs — see api/src/routes/fixJobs.ts RECOVERY_CUTOFF_SEC. We adopt
+  // success only when the endpoint says "succeeded" (PR exists). On
+  // "still_running" we keep waiting; on "failed" we transition to error.
+  //
+  // stateRef pattern: setInterval captures `state` at definition time, so
+  // we mirror it into a ref to read the latest cards/fixJobId in the probe
+  // without recreating the interval on every card arrival.
+  const stateRef = useRef(state);
+  useEffect(() => {
+    stateRef.current = state;
+  }, [state]);
+
+  // Derived dep so the effect's dep array doesn't reach for fixJobId on
+  // variants that don't have it (TS narrowing across deps is conservative).
+  const runningFixJobId =
+    state.status === "running" && state.fixJobId ? state.fixJobId : null;
+
+  useEffect(() => {
+    if (!runningFixJobId) return;
+
+    const QUIET_THRESHOLD_MS = 60_000;
+    const POLL_INTERVAL_MS = 30_000;
+    const apiBase = process.env.NEXT_PUBLIC_API_BASE;
+    if (!apiBase) return;
+
+    const probe = async () => {
+      const cur = stateRef.current;
+      if (cur.status !== "running" || !cur.fixJobId) return;
+      const lastCard = cur.cards[cur.cards.length - 1];
+      const lastTs = lastCard?.ts ?? cur.startTs;
+      if (Date.now() - lastTs < QUIET_THRESHOLD_MS) return;
+
+      let data: {
+        status?: string;
+        pr_url?: string;
+        ended_reason?: string;
+        age_seconds?: number;
+      };
+      try {
+        const res = await fetch(
+          `${apiBase}/api/fix-jobs/${cur.fixJobId}/recover`,
+          { method: "POST" },
+        );
+        data = (await res.json()) as typeof data;
+      } catch (err) {
+        if (typeof console !== "undefined") {
+          console.warn("[FixBugButton] recovery probe failed", err);
+        }
+        return;
+      }
+
+      // Re-check — live stream may have completed during the await.
+      const after = stateRef.current;
+      if (after.status !== "running") return;
+
+      if (data.status === "succeeded" && data.pr_url) {
+        closeRef.current?.();
+        closeRef.current = null;
+        setState({
+          status: "success",
+          fixJobId: after.fixJobId,
+          cards: after.cards,
+          startTs: after.startTs,
+          prUrl: data.pr_url,
+          summaryText: "",
+        });
+      } else if (data.status === "failed") {
+        closeRef.current?.();
+        closeRef.current = null;
+        setState({
+          status: "error",
+          fixJobId: after.fixJobId,
+          cards: after.cards,
+          startTs: after.startTs,
+          message: `agent did not push branch${
+            data.age_seconds ? ` (after ${String(data.age_seconds)}s)` : ""
+          }`,
+        });
+      }
+      // "still_running" → keep waiting; next probe in POLL_INTERVAL_MS.
+    };
+
+    const interval = setInterval(probe, POLL_INTERVAL_MS);
+    return () => clearInterval(interval);
+  }, [runningFixJobId]);
+
   async function handleClick() {
     const apiBase = process.env.NEXT_PUBLIC_API_BASE;
     if (!apiBase) {
