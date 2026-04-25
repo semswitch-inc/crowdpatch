@@ -70,6 +70,32 @@ export interface FixJobInsert {
   // at INSERT time because the variant selection is a property of the
   // request, not something the agent can change mid-run.
   agent_variant: string | null;
+  // Stamped at insert so refunds read the per-job cost from the row instead
+  // of a hardcoded constant — keeps refund correctness if pricing ever
+  // diverges per-app or per-variant.
+  cost_credits: number;
+}
+
+export interface CreditLedgerRow {
+  id: string;
+  user_id: string;
+  delta: number;
+  reason: string;
+  related_entity_id: string | null;
+  idempotency_key: string | null;
+  balance_after: number | null;
+  metadata_json: string | null;
+  created_at: number;
+}
+
+export interface CreditLedgerInsert {
+  id: string;
+  user_id: string;
+  delta: number;
+  reason: string;
+  related_entity_id: string | null;
+  idempotency_key: string;
+  metadata_json: string | null;
 }
 
 // Patchable subset of fix_jobs columns. Only fields explicitly listed here
@@ -203,8 +229,8 @@ export async function createFixJob(
       .prepare(
         `INSERT INTO fix_jobs
            (id, app_id, bug_report_ids_json, branch_name, status,
-            started_at, created_at, updated_at, agent_variant)
-         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+            started_at, created_at, updated_at, agent_variant, cost_credits)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
       )
       .bind(
         job.id,
@@ -216,6 +242,7 @@ export async function createFixJob(
         now,
         now,
         job.agent_variant,
+        job.cost_credits,
       ),
     ...bugReportIds.map((bugReportId) =>
       db

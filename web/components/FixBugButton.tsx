@@ -6,6 +6,11 @@ import EventLog from "@/components/EventLog";
 import { subscribeToFixJob } from "@/lib/eventStream";
 import type { Card } from "@/types/cards";
 
+// Stable hint mirroring api/src/lib/credits.ts PATCH_COST. The API is the
+// source of truth at charge time; this constant only labels the post-refund
+// badge after a confirmed terminal-failure SSE event.
+const REFUND_AMOUNT_HINT = 5;
+
 type State =
   | { status: "idle" }
   | {
@@ -38,16 +43,22 @@ interface FixBugButtonProps {
   // retry / Run another. Optional — the legacy ?bug=<id> path renders
   // FixBugButton without a stepper and omits this.
   onStatusChange?: (status: "idle" | "running" | "success" | "error") => void;
+  // Fired at every API boundary that can change the demo user's balance:
+  // POST /api/fix-jobs (charge), terminal SSE event (refund on failure),
+  // and POST /api/fix-jobs/:id/recover (refund or recharge). Owner is
+  // page.tsx's useBalance() refresh — this component doesn't read balance.
+  onBalanceShouldRefresh?: () => void;
 }
 
 export default function FixBugButton({
   bugReportId,
   ctaLabel,
   onStatusChange,
+  onBalanceShouldRefresh,
 }: FixBugButtonProps) {
   const [state, setState] = useState<State>({ status: "idle" });
+  const [refundedAmount, setRefundedAmount] = useState<number | null>(null);
   const closeRef = useRef<(() => void) | null>(null);
-  const showCreditChip = ctaLabel === "CrowdPatch it with Claude";
 
   useEffect(() => {
     return () => {
@@ -130,9 +141,13 @@ export default function FixBugButton({
           prUrl: data.pr_url,
           summaryText: "",
         });
+        // Recovery may have re-charged a previously-refunded job — refresh
+        // so the balance chip reflects the truth.
+        onBalanceShouldRefresh?.();
       } else if (data.status === "failed") {
         closeRef.current?.();
         closeRef.current = null;
+        setRefundedAmount(REFUND_AMOUNT_HINT);
         setState({
           status: "error",
           fixJobId: after.fixJobId,
@@ -142,12 +157,18 @@ export default function FixBugButton({
             data.age_seconds ? ` (after ${String(data.age_seconds)}s)` : ""
           }`,
         });
+        // Recovery refunded the failed job; refresh to reveal the +5.
+        onBalanceShouldRefresh?.();
       }
       // "still_running" → keep waiting; next probe in POLL_INTERVAL_MS.
     };
 
     const interval = setInterval(probe, POLL_INTERVAL_MS);
     return () => clearInterval(interval);
+    // onBalanceShouldRefresh is intentionally omitted — it's a stable callback
+    // from the parent; including it would re-create the interval on every
+    // page render and effectively reset the watchdog timer.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [runningFixJobId]);
 
   async function handleClick() {
@@ -163,6 +184,7 @@ export default function FixBugButton({
     }
 
     const startTs = Date.now();
+    setRefundedAmount(null);
     setState({ status: "running", fixJobId: "", cards: [], startTs });
 
     try {
@@ -173,6 +195,14 @@ export default function FixBugButton({
       });
 
       if (!res.ok) {
+        // 402 is the insufficient_credits gate; render a clearer message
+        // than the generic error path and prompt the user to claim more.
+        if (res.status === 402) {
+          const detail = await extractErrorDetail(res);
+          // Refresh in case the balance moved since the chip last rendered.
+          onBalanceShouldRefresh?.();
+          throw new Error(`${detail} — click "Claim free credits" above.`);
+        }
         throw new Error(await extractErrorDetail(res));
       }
 
@@ -181,6 +211,10 @@ export default function FixBugButton({
         stream_url: string;
         status: string;
       };
+
+      // Charge happened server-side after the DO started — refresh the
+      // chip so the user sees -5.
+      onBalanceShouldRefresh?.();
 
       setState({
         status: "running",
@@ -216,8 +250,16 @@ export default function FixBugButton({
             };
           });
           closeRef.current = null;
+          // Charge stays in effect on success — refresh keeps the chip
+          // accurate in case the user had stale state.
+          onBalanceShouldRefresh?.();
         },
         onAppError: (data) => {
+          // do_start_failed never reaches the DO so was never charged →
+          // no refund expected. All other ended_reasons hit a refund path.
+          if (data.ended_reason !== "do_start_failed") {
+            setRefundedAmount(REFUND_AMOUNT_HINT);
+          }
           setState((prev) => {
             const cards = prev.status === "running" ? prev.cards : [];
             const ts = prev.status === "running" ? prev.startTs : startTs;
@@ -230,6 +272,9 @@ export default function FixBugButton({
             };
           });
           closeRef.current = null;
+          // Refund landed server-side BEFORE the SSE event was emitted —
+          // refresh now reveals the +5.
+          onBalanceShouldRefresh?.();
         },
         onTransportError: () => {
           if (typeof console !== "undefined") {
@@ -279,15 +324,6 @@ export default function FixBugButton({
             →
           </span>
         </button>
-        {showCreditChip && (
-          <span
-            className="inline-flex items-center gap-1.5 rounded-full border border-violet-500/40 bg-violet-500/[0.08] px-3 py-1 text-xs font-600 text-violet-100"
-            title="CrowdPatch demo economy — no real ledger debit yet."
-          >
-            <span className="h-1.5 w-1.5 rounded-full bg-violet-400 shadow-[0_0_6px] shadow-violet-400" />
-            Demo credits: 100 · This patch uses 1
-          </span>
-        )}
       </div>
     );
   }
@@ -367,6 +403,15 @@ export default function FixBugButton({
         <strong className="font-600 text-red-100">Fix-job failed.</strong>{" "}
         <span className="font-mono text-xs">{state.message}</span>
       </div>
+      {refundedAmount !== null && (
+        <span className="inline-flex w-fit items-center gap-1.5 rounded-full border border-lime-500/40 bg-lime-500/[0.10] px-3 py-1 text-xs font-600 text-lime-100">
+          <span
+            aria-hidden="true"
+            className="h-1.5 w-1.5 rounded-full bg-lime-400 shadow-[0_0_6px] shadow-lime-400"
+          />
+          Refunded {String(refundedAmount)} credits
+        </span>
+      )}
       <button
         type="button"
         onClick={reset}

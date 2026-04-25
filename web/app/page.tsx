@@ -8,9 +8,11 @@ import { Suspense, useState } from "react";
 import AppSubmissionForm from "@/components/AppSubmissionForm";
 import BugReportForm from "@/components/BugReportForm";
 import ConnectedAppCard from "@/components/ConnectedAppCard";
+import CreditDisplay from "@/components/CreditDisplay";
 import FixBugButton from "@/components/FixBugButton";
 import StepIndicator from "@/components/StepIndicator";
 import SubmittedBugCard from "@/components/SubmittedBugCard";
+import { useBalance } from "@/lib/credits";
 import type { ConnectedApp } from "@/types/connected-app";
 import type { SubmittedBug } from "@/types/submitted-bug";
 
@@ -31,12 +33,36 @@ function HeroExperience() {
   const [submitted, setSubmitted] = useState<SubmittedBug | null>(null);
   const [fixStatus, setFixStatus] = useState<FixStatus>("idle");
 
-  // Backup demo path: /?bug=<id> short-circuits the entire stepper and
-  // renders the original button-only flow exactly like Day 4. No app form,
-  // no bug form, no stepper, no credit chip — preserved as the
-  // recording-day safety net.
+  // Live balance is owned at the flow level so the chip is visible across
+  // every step (including /?bug=<id> backup path). Refresh is fired by:
+  //   - mount (inside useBalance)
+  //   - claim button (CreditDisplay → onAfterClaim)
+  //   - FixBugButton at every charge / terminal SSE / recovery boundary
+  const apiBase = process.env.NEXT_PUBLIC_API_BASE;
+  const { balance, lastDelta, refresh, signalDelta } = useBalance(apiBase);
+
+  // Backup demo path: /?bug=<id> renders the simpler single-button flow,
+  // but credit chip + claim still appear above so the loop stays visible.
   if (urlBugId) {
-    return <FixBugButton bugReportId={urlBugId} />;
+    return (
+      <div className="flex w-full flex-col gap-6">
+        <CreditDisplay
+          balance={balance}
+          lastDelta={lastDelta}
+          apiBase={apiBase}
+          onAfterClaim={(granted) => {
+            signalDelta(granted);
+            void refresh();
+          }}
+        />
+        <FixBugButton
+          bugReportId={urlBugId}
+          onBalanceShouldRefresh={() => {
+            void refresh();
+          }}
+        />
+      </div>
+    );
   }
 
   const activeStep: 1 | 2 | 3 | 4 =
@@ -50,6 +76,15 @@ function HeroExperience() {
 
   return (
     <div className="flex w-full flex-col gap-6">
+      <CreditDisplay
+        balance={balance}
+        lastDelta={lastDelta}
+        apiBase={apiBase}
+        onAfterClaim={(granted) => {
+          signalDelta(granted);
+          void refresh();
+        }}
+      />
       <StepIndicator active={activeStep} />
 
       {phase === "connect" && (
@@ -96,6 +131,9 @@ function HeroExperience() {
             bugReportId={submitted.id}
             ctaLabel="CrowdPatch it with Claude"
             onStatusChange={setFixStatus}
+            onBalanceShouldRefresh={() => {
+              void refresh();
+            }}
           />
         </>
       )}

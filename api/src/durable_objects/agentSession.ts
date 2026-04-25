@@ -20,6 +20,7 @@ import {
   getAnthropicClient,
 } from "../lib/anthropic";
 import { buildAgentPrompt } from "../lib/agentPrompt";
+import { refundForFixJob } from "../lib/credits";
 import type { AppRow, BugReportRow } from "../lib/db";
 import { updateFixJob } from "../lib/db";
 import { type Card, mapAgentEvent } from "../lib/eventMapper";
@@ -216,6 +217,11 @@ export class AgentSessionDO extends DurableObject<Bindings> {
     const repoCoords = parseRepoUrl(payload.app.github_repo_url);
     if (!repoCoords) {
       const msg = `malformed github_repo_url: ${payload.app.github_repo_url}`;
+      // Refund BEFORE the SSE error_event broadcasts so a UI refetch
+      // triggered by the terminal event sees the post-refund balance.
+      // refundForFixJob is idempotent (key=refund:<id>) — safe even if a
+      // later /recover call also tries to refund.
+      await safeRefund(this.env.DB, payload.fix_job_id);
       this.persistEvent({
         kind: "error_event",
         label: msg,
@@ -371,6 +377,7 @@ export class AgentSessionDO extends DurableObject<Bindings> {
         payload.branch_name,
       );
       if (!exists) {
+        await safeRefund(this.env.DB, payload.fix_job_id);
         this.persistEvent({
           kind: "error_event",
           label: "agent did not push branch",
@@ -459,6 +466,8 @@ export class AgentSessionDO extends DurableObject<Bindings> {
         }
       }
 
+      await safeRefund(this.env.DB, payload.fix_job_id);
+
       this.persistEvent({
         kind: "error_event",
         label: msg,
@@ -499,6 +508,20 @@ export class AgentSessionDO extends DurableObject<Bindings> {
 
 function nowSec(): number {
   return Math.floor(Date.now() / 1000);
+}
+
+// Best-effort refund wrapper. Refund failures must not mask the underlying
+// terminal-failure path or block updateFixJob — a refund miss is recoverable
+// (later /recover sweep can re-detect by absence of refund:<id>), a missed
+// updateFixJob would orphan the row.
+async function safeRefund(db: D1Database, fixJobId: string): Promise<void> {
+  try {
+    await refundForFixJob(db, fixJobId);
+  } catch (err) {
+    console.warn(
+      `[agentSession] refund failed for ${fixJobId}: ${err instanceof Error ? err.message : String(err)}`,
+    );
+  }
 }
 
 interface BuildPrBodyParams {

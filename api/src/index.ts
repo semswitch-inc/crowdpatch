@@ -4,6 +4,7 @@ import Anthropic from "@anthropic-ai/sdk";
 
 import apps from "./routes/apps";
 import bugReports from "./routes/bugReports";
+import credits from "./routes/credits";
 import fixJobs from "./routes/fixJobs";
 
 // Bindings declared in wrangler.toml. Cloudflare injects these at runtime.
@@ -64,6 +65,7 @@ app.use(
 
 app.route("/api", apps);
 app.route("/api", bugReports);
+app.route("/api", credits);
 app.route("/api", fixJobs);
 
 app.get("/", (c) =>

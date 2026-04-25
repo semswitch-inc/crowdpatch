@@ -14,6 +14,15 @@ import { z } from "zod";
 import { zValidator } from "@hono/zod-validator";
 
 import type { Bindings } from "../index";
+import {
+  DEMO_USER_ID,
+  PATCH_COST,
+  chargeForFixJob,
+  getBalance,
+  ledgerEntryExists,
+  rechargeForFixJob,
+  refundForFixJob,
+} from "../lib/credits";
 import { createFixJob, getApp, getBugReport, updateFixJob } from "../lib/db";
 import { GitHubClient, parseRepoUrl } from "../lib/github";
 import { slugify } from "../lib/text";
@@ -114,6 +123,9 @@ fixJobs.post("/fix-jobs", zValidator("json", PostBody), async (c) => {
     .first<{ id: string }>();
 
   if (existing) {
+    // Dedup-first: deduped requests reconnect to an in-flight job and MUST
+    // NOT trigger a new charge or balance check. The original job's charge
+    // (if any) already landed when its row was created.
     return c.json(
       {
         fix_job_id: existing.id,
@@ -124,14 +136,33 @@ fixJobs.post("/fix-jobs", zValidator("json", PostBody), async (c) => {
     );
   }
 
-  // 4. Generate IDs. Branch name is derived from the bug title so each demo
+  // 4. Pre-flight balance check — only on the truly-new path. Refuse with
+  // 402 (Payment Required) if the demo user can't afford the patch. The
+  // frontend uses this to show a "claim more credits" prompt instead of
+  // silently going negative.
+  const balance = await getBalance(c.env.DB, DEMO_USER_ID);
+  if (balance < PATCH_COST) {
+    return c.json(
+      {
+        error: "insufficient_credits",
+        needed: PATCH_COST,
+        balance,
+        user_id: DEMO_USER_ID,
+      },
+      402,
+    );
+  }
+
+  // 5. Generate IDs. Branch name is derived from the bug title so each demo
   // (jsdiff word-diff, jsdiff patch-parse, judge's own repo, …) produces a
   // self-explanatory branch instead of the hardcoded jsdiff-only suffix.
   const fixJobId = ulid();
   const shortUlid = fixJobId.slice(-8).toLowerCase();
   const branchName = `fix/${slugify(bugReport.title).slice(0, 30)}-${shortUlid}`;
 
-  // 5. INSERT fix_jobs row.
+  // 6. INSERT fix_jobs row with cost_credits stamped at creation. Refunds
+  // and recharges read this per-row value, so any future per-app/per-variant
+  // pricing won't break historical refund correctness.
   // status='pending' — the DO bumps it to 'running' once it actually begins.
   // started_at is set NOW even with status='pending' because updateFixJob()
   // doesn't allow started_at updates and the lifecycle clock starts here.
@@ -145,47 +176,100 @@ fixJobs.post("/fix-jobs", zValidator("json", PostBody), async (c) => {
       status: "pending",
       started_at: Math.floor(Date.now() / 1000),
       agent_variant: agent_variant ?? null,
+      cost_credits: PATCH_COST,
     },
     [bug_report_id],
   );
 
-  // 6. Hand off to AgentSessionDO. Secrets (ANTHROPIC_API_KEY, GITHUB_DEMO_PAT)
-  // are NOT in the payload — the DO reads them from this.env directly.
+  // 7. Hand off to AgentSessionDO in a try/catch so a DO-start failure can
+  // mark the row failed WITHOUT issuing a charge. We charge AFTER the DO
+  // start confirms — eliminates the orphan-charge window.
+  // Secrets (ANTHROPIC_API_KEY, GITHUB_DEMO_PAT) are NOT in the payload —
+  // the DO reads them from this.env directly.
   const id = c.env.AGENT_SESSION_DO.idFromName(fixJobId);
   const stub = c.env.AGENT_SESSION_DO.get(id);
 
-  const startResp = await stub.fetch(
-    new Request("https://do.local/start", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        fix_job_id: fixJobId,
-        bug_report: bugReport,
-        app,
-        branch_name: branchName,
-        anthropic_agent_id: agentId,
-        anthropic_environment_id: environmentId,
+  let startResp: Response;
+  try {
+    startResp = await stub.fetch(
+      new Request("https://do.local/start", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          fix_job_id: fixJobId,
+          bug_report: bugReport,
+          app,
+          branch_name: branchName,
+          anthropic_agent_id: agentId,
+          anthropic_environment_id: environmentId,
+        }),
       }),
-    }),
-  );
+    );
+  } catch (err) {
+    await markFixJobDoStartFailed(
+      c.env.DB,
+      fixJobId,
+      err instanceof Error ? err.message : String(err),
+    );
+    return c.json(
+      { error: "agent_session_do unreachable", status: "do_start_failed" },
+      500,
+    );
+  }
 
   if (!startResp.ok) {
+    await markFixJobDoStartFailed(
+      c.env.DB,
+      fixJobId,
+      `DO /start returned ${String(startResp.status)}`,
+    );
     return c.json(
       { error: "agent_session_do failed to start", status: startResp.status },
       502,
     );
   }
 
-  // 7. Return 202 with stream URL — browser opens EventSource on stream_url.
+  // 8. Charge — DO start confirmed, so the user is getting a real run.
+  // chargeForFixJob is idempotent (key=charge:<fix_job_id>) — a duplicate
+  // call would be a no-op. We log but don't fail the request if the charge
+  // write fails: the user has a working run; charge correctness is recoverable
+  // in a later sweep, but a 5xx here would orphan the running DO.
+  let postChargeBalance = balance;
+  try {
+    const chargeResult = await chargeForFixJob(c.env.DB, fixJobId);
+    postChargeBalance = chargeResult.balanceAfter;
+  } catch (err) {
+    console.warn(
+      `[fix-jobs] charge failed for ${fixJobId}: ${err instanceof Error ? err.message : String(err)}`,
+    );
+  }
+
+  // 9. Return 202 with stream URL — browser opens EventSource on stream_url.
   return c.json(
     {
       fix_job_id: fixJobId,
       stream_url: `/api/fix-jobs/${fixJobId}/events`,
       status: "pending",
+      balance_after: postChargeBalance,
     },
     202,
   );
 });
+
+async function markFixJobDoStartFailed(
+  db: D1Database,
+  fixJobId: string,
+  detail: string,
+): Promise<void> {
+  // No refund — the DO never started, so no charge was issued. This matches
+  // the plan's decision-#5(g) operation order.
+  await updateFixJob(db, fixJobId, {
+    status: "failed",
+    error_message: detail.slice(0, 500),
+    ended_reason: "do_start_failed",
+    completed_at: Math.floor(Date.now() / 1000),
+  });
+}
 
 // SSE stream of agent events for a given fix_job_id.
 // Browser uses native EventSource (GET-only); Worker proxies to DO /subscribe.
@@ -368,6 +452,15 @@ fixJobs.post("/fix-jobs/:id/recover", async (c) => {
 
     // Old job + no branch = genuine failure. (Or started_at missing — old
     // pre-Day-2 rows won't have it; treat unknown age as past-cutoff.)
+    // Refund BEFORE updateFixJob so the credit is back in D1 before any
+    // downstream listener reads the post-failure state.
+    try {
+      await refundForFixJob(c.env.DB, fixJobId);
+    } catch (err) {
+      console.warn(
+        `[recover] refund failed for ${fixJobId}: ${err instanceof Error ? err.message : String(err)}`,
+      );
+    }
     await updateFixJob(c.env.DB, fixJobId, {
       status: "failed",
       error_message: "agent did not push branch within recovery window",
@@ -426,6 +519,27 @@ fixJobs.post("/fix-jobs/:id/recover", async (c) => {
     });
     prUrl = pr.html_url;
     prNumber = pr.number;
+  }
+
+  // Recovery re-charge guardrail: if this job was previously refunded
+  // (i.e. the DO marked it failed and we issued refund:<id>), we now owe
+  // the patch cost back because adoption produced a real PR. Only fires
+  // when refund:<id> exists in the ledger — old historical failed jobs
+  // (pre-credits-system) have no refund row → no surprise debit.
+  // rechargeForFixJob is idempotent (key=recharge:<id>), so duplicate
+  // /recover calls won't double-debit.
+  const previouslyRefunded = await ledgerEntryExists(
+    c.env.DB,
+    `refund:${fixJobId}`,
+  );
+  if (previouslyRefunded) {
+    try {
+      await rechargeForFixJob(c.env.DB, fixJobId);
+    } catch (err) {
+      console.warn(
+        `[recover] recharge failed for ${fixJobId}: ${err instanceof Error ? err.message : String(err)}`,
+      );
+    }
   }
 
   await updateFixJob(c.env.DB, fixJobId, {
