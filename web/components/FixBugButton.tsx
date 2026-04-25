@@ -129,7 +129,9 @@ export default function FixBugButton({ bugReportId }: FixBugButtonProps) {
           // Browser auto-reconnects on transport errors; just log.
           // Not terminal — only error_event closes the UI.
           if (typeof console !== "undefined") {
-            console.warn("[FixBugButton] EventSource transport error (browser will reconnect)");
+            console.warn(
+              "[FixBugButton] EventSource transport error (browser will reconnect)",
+            );
           }
         },
       });

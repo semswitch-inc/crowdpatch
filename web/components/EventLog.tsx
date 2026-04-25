@@ -117,14 +117,14 @@ function visualForKind(card: Card): Visual {
     icon: Sparkles,
     icon_color: "text-zinc-500 dark:text-zinc-400",
     label_color: "text-zinc-800 dark:text-zinc-200",
-    container:
-      "border-zinc-200 bg-white dark:border-zinc-800 dark:bg-zinc-950",
+    container: "border-zinc-200 bg-white dark:border-zinc-800 dark:bg-zinc-950",
   };
   const blue: Visual = {
     icon: GitCommit,
     icon_color: "text-blue-600 dark:text-blue-400",
     label_color: "text-blue-900 dark:text-blue-200",
-    container: "border-blue-200 bg-blue-50 dark:border-blue-900 dark:bg-blue-950",
+    container:
+      "border-blue-200 bg-blue-50 dark:border-blue-900 dark:bg-blue-950",
   };
   const emerald: Visual = {
     icon: CheckCircle2,
@@ -137,8 +137,7 @@ function visualForKind(card: Card): Visual {
     icon: XCircle,
     icon_color: "text-red-600 dark:text-red-400",
     label_color: "text-red-900 dark:text-red-200",
-    container:
-      "border-red-200 bg-red-50 dark:border-red-900 dark:bg-red-950",
+    container: "border-red-200 bg-red-50 dark:border-red-900 dark:bg-red-950",
   };
 
   switch (card.kind) {
