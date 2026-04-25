@@ -91,18 +91,18 @@ To reset local D1 entirely: `rm -rf .wrangler/state/v3/d1` and re-run
 
 ## Routes
 
-| Method | Path                        | Purpose                                                                                                                                 |
-| ------ | --------------------------- | --------------------------------------------------------------------------------------------------------------------------------------- |
-| `GET`  | `/health`                   | Liveness probe.                                                                                                                         |
-| `GET`  | `/`                         | Service banner + the `DEMO_REPO_URL` it's currently pointed at.                                                                         |
-| `POST` | `/api/apps`                 | Register a new app (repo URL, default branch, optional setup/test commands, agent notes).                                               |
-| `POST` | `/api/bug-reports`          | File a new bug report against an app. Returns the bug ID for deep-linking into `/demo`.                                                 |
-| `GET`  | `/api/credits/balance`      | Return the requester's credit balance (single-user demo: scopes by `user_uploader_hassan`).                                             |
-| `POST` | `/api/credits/claim`        | Mint the daily allowance for the requester. Idempotent per UTC day.                                                                     |
-| `POST` | `/api/fix-jobs`             | Validate, dedupe (60s window), insert, hand off to `AgentSessionDO`. Returns `202 { fix_job_id, stream_url }`.                          |
-| `GET`  | `/api/fix-jobs/:id`         | Full row: status, cost, PR URL, token totals, run-artifact manifest (R2 keys + bytes), prompt snapshot reference.                       |
-| `GET`  | `/api/fix-jobs/:id/events`  | SSE stream of semantic agent events. Replays history from DO SQLite on (re)connect, then streams live. Browser opens via `EventSource`. |
-| `POST` | `/api/fix-jobs/:id/recover` | Manual escape hatch: detect late branch pushes, adopt as success (refunds credit), or mark `agent_no_push` after the cutoff window.     |
+| Method | Path                        | Purpose                                                                                                                                                                                           |
+| ------ | --------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `GET`  | `/health`                   | Liveness probe.                                                                                                                                                                                   |
+| `GET`  | `/`                         | Service banner + the `DEMO_REPO_URL` it's currently pointed at.                                                                                                                                   |
+| `POST` | `/api/apps`                 | Register a new app (repo URL, default branch, optional setup/test commands, agent notes).                                                                                                         |
+| `POST` | `/api/bug-reports`          | File a new bug report against an app. Returns the bug ID for deep-linking into `/demo`.                                                                                                           |
+| `GET`  | `/api/credits/balance`      | Return the requester's credit balance (single-user demo: scopes by `user_uploader_hassan`).                                                                                                       |
+| `POST` | `/api/credits/claim`        | Mint the daily allowance for the requester. Idempotent per UTC day.                                                                                                                               |
+| `POST` | `/api/fix-jobs`             | Validate, dedupe (60s window), insert, hand off to `AgentSessionDO`. Returns `202 { fix_job_id, stream_url }`.                                                                                    |
+| `GET`  | `/api/fix-jobs/:id`         | Full row: status, cost, PR URL, token totals, run-artifact manifest (R2 keys + bytes), prompt snapshot reference.                                                                                 |
+| `GET`  | `/api/fix-jobs/:id/events`  | SSE stream of semantic agent events. Replays history from DO SQLite on (re)connect, then streams live. Browser opens via `EventSource`.                                                           |
+| `POST` | `/api/fix-jobs/:id/recover` | Manual escape hatch: detect late branch pushes and adopt as success (re-charging the credit if the job had been refunded), or mark `agent_no_push` past the cutoff window (refunding the credit). |
 
 ## SSE wire contract
 

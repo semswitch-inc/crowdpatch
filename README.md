@@ -210,6 +210,12 @@ npx wrangler secret put ENVIRONMENT
 **5. Bootstrap the Managed Agent**
 
 ```bash
+# bootstrap:anthropic reads api/.dev.vars (NOT Worker secrets) for the
+# Anthropic key, so create that file first if you skipped local dev:
+cp .dev.vars.example .dev.vars
+# Edit .dev.vars and fill ANTHROPIC_API_KEY (only that line is needed
+# for bootstrap; the rest can stay as REPLACE_ME).
+
 npm run bootstrap:anthropic
 # Idempotent. Prints ANTHROPIC_AGENT_ID + ANTHROPIC_ENVIRONMENT_ID.
 # Set both as Worker secrets:
