@@ -137,6 +137,14 @@ export interface FixJobUpdate {
   // NULL if the SDK doesn't expose those fields at this version.
   anthropic_agent_model?: string | null;
   anthropic_agent_version?: string | null;
+  // Migration 0006 — R2 evidence-bundle metadata + send-time prompt snapshot.
+  // artifact_manifest_json is JSON.stringify(R2ArtifactManifest) written from
+  // lib/artifacts.ts after each terminal R2 put cycle. prompt_snapshot_text is
+  // the exact user.message string captured immediately after buildAgentPrompt()
+  // and BEFORE events.send(), so /recover can build a faithful agent-prompt.txt
+  // even if upstream app rows mutated between runs.
+  artifact_manifest_json?: string | null;
+  prompt_snapshot_text?: string | null;
 }
 
 const ALLOWED_UPDATE_KEYS: ReadonlySet<string> = new Set<keyof FixJobUpdate>([
@@ -160,6 +168,8 @@ const ALLOWED_UPDATE_KEYS: ReadonlySet<string> = new Set<keyof FixJobUpdate>([
   "total_cache_read_input_tokens",
   "anthropic_agent_model",
   "anthropic_agent_version",
+  "artifact_manifest_json",
+  "prompt_snapshot_text",
 ]);
 
 export async function getBugReport(

@@ -21,6 +21,7 @@ import {
 } from "../lib/anthropic";
 import { buildAgentPrompt } from "../lib/agentPrompt";
 import { extractCumulativeUsage } from "../lib/anthropicUsage";
+import { writeRunArtifactsBestEffort } from "../lib/artifacts";
 import { refundForFixJob } from "../lib/credits";
 import type { AppRow, BugReportRow } from "../lib/db";
 import { updateFixJob } from "../lib/db";
@@ -235,6 +236,13 @@ export class AgentSessionDO extends DurableObject<Bindings> {
         ended_reason: "agent_error",
         completed_at: nowSec(),
       });
+      // R2 evidence bundle on the malformed-URL defensive path. This branch is
+      // unreachable via POST /api/fix-jobs (validated upstream at fixJobs.ts:91)
+      // but is kept as defense in depth for any future internal caller. Best-
+      // effort: never throws; the terminal SSE / status / refund have already
+      // landed above. agent-prompt.txt is omitted on this path because the
+      // session was never created and prompt_snapshot_text stays NULL.
+      await writeRunArtifactsBestEffort(this.env, payload.fix_job_id);
       this.markComplete();
       return;
     }
@@ -313,6 +321,13 @@ export class AgentSessionDO extends DurableObject<Bindings> {
         bugReport: payload.bug_report,
         app: payload.app,
         branch_name: payload.branch_name,
+      });
+      // Persist the EXACT prompt string sent to the agent BEFORE events.send()
+      // so /recover can reproduce a faithful agent-prompt.txt artifact even if
+      // upstream apps.* rows mutate later. Cheap (~10ms) and outside the SSE
+      // timing-critical stream-FIRST window below.
+      await updateFixJob(this.env.DB, payload.fix_job_id, {
+        prompt_snapshot_text: userMessage,
       });
 
       // STREAM-FIRST ordering: open events.stream() BEFORE events.send()
@@ -556,6 +571,12 @@ export class AgentSessionDO extends DurableObject<Bindings> {
           // best-effort; usage stats are diagnostic, not load-bearing
         }
       }
+
+      // R2 evidence bundle — runs LAST in the finally so the orchestrator
+      // reads the freshly-persisted terminal state (status, ended_reason,
+      // totals, first_*) from D1. Best-effort: never throws; the original
+      // terminal outcome has long since been broadcast and persisted.
+      await writeRunArtifactsBestEffort(this.env, payload.fix_job_id);
     }
   }
 }

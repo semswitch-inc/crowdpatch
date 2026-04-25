@@ -36,4 +36,11 @@ export interface FixJobSummary {
   started_at: number | null;
   completed_at: number | null;
   cost_credits: number;
+
+  // R2 evidence-bundle manifest (migration 0006). Returned as the raw JSON
+  // string from GET /api/fix-jobs/:id (matches the result_summary_json
+  // convention). Null until the first artifact write completes; null on rows
+  // pre-dating the R2 slice. Parse with JSON.parse if you need to inspect the
+  // entries; no UI consumes it today.
+  artifact_manifest_json: string | null;
 }

@@ -14,6 +14,7 @@ import { z } from "zod";
 import { zValidator } from "@hono/zod-validator";
 
 import type { Bindings } from "../index";
+import { writeRunArtifactsBestEffort } from "../lib/artifacts";
 import {
   DEMO_USER_ID,
   PATCH_COST,
@@ -299,7 +300,8 @@ fixJobs.get("/fix-jobs/:id", async (c) => {
             total_cache_creation_input_tokens, total_cache_read_input_tokens,
             first_input_tokens, first_output_tokens,
             first_cache_creation_input_tokens, first_cache_read_input_tokens,
-            started_at, completed_at, cost_credits
+            started_at, completed_at, cost_credits,
+            artifact_manifest_json
        FROM fix_jobs WHERE id = ?`,
   )
     .bind(fixJobId)
@@ -326,6 +328,7 @@ fixJobs.get("/fix-jobs/:id", async (c) => {
       started_at: number | null;
       completed_at: number | null;
       cost_credits: number;
+      artifact_manifest_json: string | null;
     }>();
   if (!row) {
     return c.json({ error: "fix_job not found" }, 404);
@@ -530,6 +533,10 @@ fixJobs.post("/fix-jobs/:id/recover", async (c) => {
       ended_reason: "agent_no_push",
       completed_at: nowSec,
     });
+    // Refresh the R2 evidence bundle to reflect the post-recovery terminal
+    // state (agent_no_push instead of whatever the DO had recorded). Best-
+    // effort; never throws.
+    await writeRunArtifactsBestEffort(c.env, fixJobId);
     return c.json({
       status: "failed",
       ended_reason: "agent_no_push",
@@ -611,6 +618,10 @@ fixJobs.post("/fix-jobs/:id/recover", async (c) => {
     ended_reason: "success",
     completed_at: Math.floor(Date.now() / 1000),
   });
+  // Refresh the R2 evidence bundle so run-summary.json + pr-metadata.json
+  // reflect the adopted PR. The original DO run may have written a manifest
+  // with status:failed; this overwrites under the same keys. Best-effort.
+  await writeRunArtifactsBestEffort(c.env, fixJobId);
 
   return c.json({
     status: "succeeded",
