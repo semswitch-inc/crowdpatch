@@ -140,8 +140,8 @@ export default function Home() {
           </h1>
 
           <p className="max-w-md text-base leading-7 text-ink-200">
-            Watch a Claude Managed Agent investigate the bug, write a fix, and
-            open a PR — live, in real time.
+            Watch a Claude Managed Agent (Opus 4.6) investigate the bug, write a
+            fix, and open a real GitHub PR — live, in real time.
           </p>
         </section>
 

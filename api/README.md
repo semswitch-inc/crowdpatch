@@ -24,7 +24,10 @@ credentials needed to run it locally.
 - **Anthropic Managed Agents SDK** — `@anthropic-ai/sdk` beta surface,
   `client.beta.sessions.create / events.stream / events.send`. The agent
   runs against a `github_repository` resource; the PAT is attached to the
-  resource, never to the prompt.
+  resource, never to the prompt. Default runtime model is **Opus 4.6**
+  (selected for reliable patch execution; the variant-routing infrastructure
+  in `src/routes/fixJobs.ts` lets you swap models per-request via
+  `agent_variant: A|B|C|D` for A/B testing).
 - **Octokit** — used inside the DO to verify the agent pushed its branch
   and to open the resulting pull request (`src/lib/github.ts`).
 

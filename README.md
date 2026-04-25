@@ -1,12 +1,12 @@
 CrowdPatch
 
-Community-sourced bugs. AI powered fixes. Powered by Claude Managed Agents.
+Community-sourced bugs. AI-shipped fixes. Powered by Claude Managed Agents on Opus 4.6 — every run lands as a real GitHub PR.
 
 A developer ecosystem where bug reports become merged PRs — manually invoked, or autonomously and asynchronously, while you sleep.
 
 What Is This?
-CrowdPatch is a self-healing software commons. Developers upload their apps to a public square. The crowd stress-tests them, reports bugs, and earns currency in the form of credits. Uploaders spend their own currency to deploy Claude Managed Agents to look at current bug reports, sandbox the codebase, diagnose the reported issues, and return verified patches as pull requests.
-It's a closed-loop economy where humans provide the signal and agents provide the labor, turning every dev project into an autonomous improvement channel.
+CrowdPatch is a self-healing software commons. Developers upload their apps to a public square. The crowd stress-tests them, reports bugs, and earns currency in the form of credits. Uploaders spend their own currency to deploy Claude Managed Agents (running Opus 4.6 for reliable patch execution) to look at current bug reports, sandbox the codebase, diagnose the reported issues, and return verified patches as pull requests on GitHub.
+It's a closed-loop economy where humans provide the signal and agents provide the labor, turning every dev project into an autonomous improvement channel. Every successful run is recorded as a real PR — durable artifacts you can review, merge, or use as evidence the agent shipped real work.
 
 The Loop
 
@@ -29,7 +29,8 @@ The Features
 
 Asynchronous autonomy - fixes happen without the uploader present
 Manual human-in-the-loop - fixes happen only when the uploader chooses
-Managed Agent sandboxing — Claude operates safely inside isolated codebases
+Managed Agent sandboxing — Claude (Opus 4.6) operates safely inside isolated codebases
+Real PR artifacts — every successful run produces a reviewable, mergeable GitHub PR; no ephemeral output
 Crowd-sourced signal — real human testers, not synthetic benchmarks
 Native economy — Currency credits align incentives across reporters, fixers, and uploaders
 

@@ -52,7 +52,7 @@ const suseMono = localFont({
 export const metadata: Metadata = {
   title: "CrowdPatch",
   description:
-    "Closed-loop bug-fix economy — file a bug, an Anthropic Managed Agent ships the PR.",
+    "Closed-loop bug-fix economy — file a bug, an Anthropic Managed Agent on Opus 4.6 ships the PR.",
 };
 
 export default function RootLayout({
