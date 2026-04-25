@@ -1,6 +1,7 @@
 {
   "name": "crowdpatch",
   "private": true,
+  "workspaces": ["api", "web"],
   "scripts": {
     "check": "npm --prefix api run check && npm --prefix web run check",
     "typecheck": "npm --prefix api run typecheck && npm --prefix web run typecheck",
