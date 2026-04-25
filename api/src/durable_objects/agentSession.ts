@@ -322,12 +322,18 @@ export class AgentSessionDO extends DurableObject<Bindings> {
         app: payload.app,
         branch_name: payload.branch_name,
       });
-      // Persist the EXACT prompt string sent to the agent BEFORE events.send()
-      // so /recover can reproduce a faithful agent-prompt.txt artifact even if
+      // Persist the prompt string sent to the agent BEFORE events.send() so
+      // /recover can reproduce a faithful agent-prompt.txt artifact even if
       // upstream apps.* rows mutate later. Cheap (~10ms) and outside the SSE
       // timing-critical stream-FIRST window below.
+      //
+      // Run through redact() before writing — defense in depth so any future
+      // prompt-template change that accidentally interpolates a secret stays
+      // out of D1 (today's template has no secrets, so this is a no-op on
+      // current content; redact() is idempotent so the artifact builder's
+      // second pass is safe).
       await updateFixJob(this.env.DB, payload.fix_job_id, {
-        prompt_snapshot_text: userMessage,
+        prompt_snapshot_text: redact(userMessage),
       });
 
       // STREAM-FIRST ordering: open events.stream() BEFORE events.send()

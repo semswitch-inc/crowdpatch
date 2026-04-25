@@ -214,7 +214,7 @@ fixJobs.post("/fix-jobs", zValidator("json", PostBody), async (c) => {
     );
   } catch (err) {
     await markFixJobDoStartFailed(
-      c.env.DB,
+      c.env,
       fixJobId,
       err instanceof Error ? err.message : String(err),
     );
@@ -226,7 +226,7 @@ fixJobs.post("/fix-jobs", zValidator("json", PostBody), async (c) => {
 
   if (!startResp.ok) {
     await markFixJobDoStartFailed(
-      c.env.DB,
+      c.env,
       fixJobId,
       `DO /start returned ${String(startResp.status)}`,
     );
@@ -264,18 +264,24 @@ fixJobs.post("/fix-jobs", zValidator("json", PostBody), async (c) => {
 });
 
 async function markFixJobDoStartFailed(
-  db: D1Database,
+  env: Bindings,
   fixJobId: string,
   detail: string,
 ): Promise<void> {
   // No refund — the DO never started, so no charge was issued. This matches
   // the plan's decision-#5(g) operation order.
-  await updateFixJob(db, fixJobId, {
+  await updateFixJob(env.DB, fixJobId, {
     status: "failed",
     error_message: detail.slice(0, 500),
     ended_reason: "do_start_failed",
     completed_at: Math.floor(Date.now() / 1000),
   });
+  // Write a minimal R2 evidence bundle so the "every run writes artifacts"
+  // invariant holds even when the DO never starts. agent-prompt.txt is
+  // omitted (prompt_snapshot_text is NULL — the session was never opened);
+  // the bundle still contains submitted-bug.json + run-summary.json with
+  // status=failed/ended_reason=do_start_failed. Best-effort: never throws.
+  await writeRunArtifactsBestEffort(env, fixJobId);
 }
 
 // GET /api/fix-jobs/:id — return the fix_jobs row + telemetry. Used by the
