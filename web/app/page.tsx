@@ -76,9 +76,6 @@ export default function Home() {
             . It&apos;s also the engine behind CrowdPatch, a closed-loop bug-fix
             economy launching soon. Built for the Built With Opus 4.7 Hackathon.
           </p>
-          <p className="font-mono text-xs leading-5 text-zinc-400 dark:text-zinc-600">
-            Try a different bug: append <code>?bug=bug_002</code> to the URL.
-          </p>
         </section>
       </main>
     </div>
