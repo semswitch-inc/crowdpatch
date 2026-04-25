@@ -50,8 +50,13 @@ export type Bindings = {
 
 const app = new Hono<{ Bindings: Bindings }>();
 
-// CORS for browser clients hitting /api/*. Localhost dev origin + any
-// *.pages.dev origin (Cloudflare Pages preview/prod URLs).
+// CORS for browser clients hitting /api/*. Allowed origins:
+//   - http://localhost:3000           (Next.js dev server)
+//   - https://*.pages.dev             (Cloudflare Pages preview/prod URLs)
+//   - https://crowdpatch.dev          (apex custom domain — landing + demo)
+//   - https://www.crowdpatch.dev      (www custom domain — same site)
+// Hostname matches use parsed URL hostname (not raw string) so a hostname
+// like `crowdpatch.dev.evil.com` is not mistaken for the apex.
 app.use(
   "/api/*",
   cors({
@@ -59,8 +64,10 @@ app.use(
       if (origin === "http://localhost:3000") return origin;
       try {
         const u = new URL(origin);
-        if (u.protocol === "https:" && u.hostname.endsWith(".pages.dev")) {
-          return origin;
+        if (u.protocol === "https:") {
+          if (u.hostname.endsWith(".pages.dev")) return origin;
+          if (u.hostname === "crowdpatch.dev") return origin;
+          if (u.hostname === "www.crowdpatch.dev") return origin;
         }
       } catch {
         // not a parseable URL — fall through
