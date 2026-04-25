@@ -24,7 +24,7 @@ const DEV_VARS_PATH = resolve(__dirname, "../.dev.vars");
 
 const AGENT_NAME = "crowdpatch-bug-fixer";
 const ENVIRONMENT_NAME = "crowdpatch-default";
-const MODEL = "claude-opus-4-7";
+const MODEL = "claude-opus-4-6";
 
 const SYSTEM_PROMPT = `You are CrowdPatch's repository maintenance agent.
 

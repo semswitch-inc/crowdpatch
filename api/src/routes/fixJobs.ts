@@ -272,7 +272,11 @@ fixJobs.post("/fix-jobs/:id/recover", async (c) => {
   }
 
   // Already terminal → return as-is. Recovery is idempotent.
-  if (job.status === "succeeded" || job.status === "failed") {
+  if (
+    job.status === "succeeded" ||
+    job.status === "failed" ||
+    job.status === "cancelled"
+  ) {
     return c.json({
       status: job.status,
       pr_url: job.pr_url,
