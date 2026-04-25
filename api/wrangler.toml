@@ -5,6 +5,20 @@ compatibility_flags = ["nodejs_compat"]
 
 workers_dev = true
 
+# ============================================================================
+# SELF-HOSTERS, READ THIS BEFORE `wrangler deploy`:
+# This block binds the Worker to the demo's custom domain (api.crowdpatch.dev),
+# which lives in the demo Cloudflare account's zone. ANY OTHER ACCOUNT's
+# `wrangler deploy` will fail here with a "zone not found" error.
+# To deploy from your own account, EITHER:
+#   (a) comment this entire `routes = [...]` block out — your Worker will
+#       publish to crowdpatch-api.<your-subdomain>.workers.dev (zero DNS
+#       setup), OR
+#   (b) replace `api.crowdpatch.dev` below with a hostname under a zone you
+#       already control in Cloudflare.
+# Then update the CORS allowlist near the top of `src/index.ts` to include
+# your frontend origin(s).
+# ============================================================================
 # Custom domain — Cloudflare auto-provisions DNS + TLS for api.crowdpatch.dev
 # on deploy. No manual CNAME needed; the zone (crowdpatch.dev) must already
 # be in this CF account.
@@ -44,6 +58,13 @@ new_sqlite_classes = ["AgentSessionDO"]
 # Authoritative store for users, apps, bug reports, fix jobs, credit ledger.
 # `database_id` is a placeholder — replace after running `wrangler d1 create crowdpatch-db`.
 
+# ============================================================================
+# SELF-HOSTERS: replace `database_id` below with the value printed by
+# `npm run db:create` (which runs `wrangler d1 create crowdpatch-db`). The
+# committed ID is the demo D1 instance and is unusable from any other
+# Cloudflare account — `wrangler deploy` will fail with a "database not
+# found" error until you swap it in.
+# ============================================================================
 [[d1_databases]]
 binding = "DB"
 database_name = "crowdpatch-db"

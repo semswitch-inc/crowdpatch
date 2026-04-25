@@ -11,6 +11,9 @@ npm install
 npm run dev          # http://localhost:3000
 ```
 
+Open `http://localhost:3000/demo` to demo the seeded bug. The root path
+also works and redirects to `/demo` when given a `?bug=<id>` query.
+
 `NEXT_PUBLIC_API_BASE` controls which API to hit. Defaults to local during dev (see `.env.local.example`).
 
 ## Quality gate

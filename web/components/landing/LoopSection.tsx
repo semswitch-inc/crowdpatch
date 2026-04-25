@@ -1,4 +1,11 @@
-import { Bot, Bug, GitMerge, GitPullRequest, Shield, Users } from "lucide-react";
+import {
+  Bot,
+  Bug,
+  GitMerge,
+  GitPullRequest,
+  Shield,
+  Users,
+} from "lucide-react";
 
 export default function LoopSection() {
   return (

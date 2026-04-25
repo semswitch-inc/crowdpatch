@@ -19,8 +19,14 @@ credentials needed to run it locally.
 - **D1** — relational store for users, apps, bug reports, fix-jobs, and
   the credit ledger. Migrations in `migrations/`, dev seed in
   `seeds/dev.sql`, helpers in `src/lib/db.ts`.
-- **R2** — bucket binding for future agent-artifact storage (logs,
-  diffs). Declared in `wrangler.toml`; not yet exercised by the spine.
+- **R2** — durable per-fix-job evidence bundle. Every run writes
+  `submitted-bug.json`, `agent-prompt.txt`, `run-summary.json`,
+  `pr-metadata.json`, and (when populated) `agent-reply-tail.txt` under
+  the `fix-jobs/<fix_job_id>/` prefix. A manifest (R2 keys, content
+  types, byte sizes) is persisted on the row and surfaced via
+  `GET /api/fix-jobs/:id`. Writes are best-effort and isolated per file
+  — an R2 outage never blocks the run, the PR, or the SSE terminal
+  event. See `src/lib/artifacts.ts`.
 - **Anthropic Managed Agents SDK** — `@anthropic-ai/sdk` beta surface,
   `client.beta.sessions.create / events.stream / events.send`. The agent
   runs against a `github_repository` resource; the PAT is attached to the
@@ -85,12 +91,18 @@ To reset local D1 entirely: `rm -rf .wrangler/state/v3/d1` and re-run
 
 ## Routes
 
-| Method | Path                       | Purpose                                                                                                                                           |
-| ------ | -------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `GET`  | `/health`                  | Liveness probe.                                                                                                                                   |
-| `GET`  | `/`                        | Service banner + the `DEMO_REPO_URL` it's currently pointed at.                                                                                   |
-| `POST` | `/api/fix-jobs`            | Validate, dedupe (60s window), insert, hand off to `AgentSessionDO`. Returns `202 { fix_job_id, stream_url }`.                                    |
-| `GET`  | `/api/fix-jobs/:id/events` | SSE stream of semantic agent events for a given fix-job. Replays history from DO SQLite, then streams live. Browser opens this via `EventSource`. |
+| Method | Path                        | Purpose                                                                                                                                 |
+| ------ | --------------------------- | --------------------------------------------------------------------------------------------------------------------------------------- |
+| `GET`  | `/health`                   | Liveness probe.                                                                                                                         |
+| `GET`  | `/`                         | Service banner + the `DEMO_REPO_URL` it's currently pointed at.                                                                         |
+| `POST` | `/api/apps`                 | Register a new app (repo URL, default branch, optional setup/test commands, agent notes).                                               |
+| `POST` | `/api/bug-reports`          | File a new bug report against an app. Returns the bug ID for deep-linking into `/demo`.                                                 |
+| `GET`  | `/api/credits/balance`      | Return the requester's credit balance (single-user demo: scopes by `user_uploader_hassan`).                                             |
+| `POST` | `/api/credits/claim`        | Mint the daily allowance for the requester. Idempotent per UTC day.                                                                     |
+| `POST` | `/api/fix-jobs`             | Validate, dedupe (60s window), insert, hand off to `AgentSessionDO`. Returns `202 { fix_job_id, stream_url }`.                          |
+| `GET`  | `/api/fix-jobs/:id`         | Full row: status, cost, PR URL, token totals, run-artifact manifest (R2 keys + bytes), prompt snapshot reference.                       |
+| `GET`  | `/api/fix-jobs/:id/events`  | SSE stream of semantic agent events. Replays history from DO SQLite on (re)connect, then streams live. Browser opens via `EventSource`. |
+| `POST` | `/api/fix-jobs/:id/recover` | Manual escape hatch: detect late branch pushes, adopt as success (refunds credit), or mark `agent_no_push` after the cutoff window.     |
 
 ## SSE wire contract
 

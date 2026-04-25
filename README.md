@@ -42,7 +42,7 @@ The crowd finds it. Claude fixes it. You ship it.
 
 Built for the Built With Opus 4.7 Hackathon - where autonomy stopped being a feature and became a category.
 
-~ crowdpatch.ai · Just CrowdPatch it. ~
+~ crowdpatch.dev · Just CrowdPatch it. ~
 
 ---
 
@@ -50,7 +50,7 @@ Built for the Built With Opus 4.7 Hackathon - where autonomy stopped being a fea
 
 CrowdPatch is open source (MIT). Anyone can self-host it against their own
 GitHub repo with their own Anthropic + GitHub keys. The hosted product at
-crowdpatch.ai is a deployment of this same codebase.
+crowdpatch.dev is a deployment of this same codebase.
 
 **Prerequisites**
 
@@ -102,7 +102,9 @@ cd api && npm run dev
 cd web && npm run dev
 ```
 
-Open `http://localhost:3000` and click the button. The agent will clone
+Open `http://localhost:3000/demo` (the canonical demo entry — the root
+path also works and redirects when given a `?bug=<id>` query) and click
+the button. The agent will clone
 [`semswitch-inc/jsdiff-demo`](https://github.com/semswitch-inc/jsdiff-demo),
 fix the planted bug, and open a PR. Watch the live event log render
 each step in real time.
@@ -120,7 +122,9 @@ test suite:
    rebuild steps, environmental fallbacks). Add one or more matching
    `bug_reports` rows.
 3. Re-run `npm run db:seed:local` from the `api/` directory.
-4. Visit `http://localhost:3000?bug=YOUR_BUG_ID`.
+4. Visit `http://localhost:3000/demo?bug=YOUR_BUG_ID` (or
+   `http://localhost:3000?bug=YOUR_BUG_ID` — same destination, the root
+   path redirects to `/demo` when a `bug` query is present).
 5. Watch the agent work in real time.
 
 ## Architecture
@@ -151,11 +155,106 @@ Server-Sent Events to N concurrent browser subscribers.
 
 For the API service docs, see [`api/README.md`](./api/README.md).
 
+## Deploy your own CrowdPatch on Cloudflare
+
+CrowdPatch is open source under MIT. To deploy your own instance against
+your own Cloudflare account + Anthropic + GitHub credentials:
+
+**Prerequisites**
+
+- A Cloudflare account on the Workers Paid plan (Durable Objects + the
+  5 min CPU limit require it; ~$5/month).
+- An Anthropic API key with access to Claude Opus 4.6 / Managed Agents
+  beta.
+- A GitHub fine-grained PAT scoped to the repo CrowdPatch will operate
+  on (Contents R/W, Pull requests R/W, Issues Read).
+- `wrangler` 4.x logged in to your account: `npx wrangler login`.
+
+**1. Provision D1**
+
+```bash
+cd api
+npm run db:create
+# Copy the printed `database_id = "..."` value into `api/wrangler.toml`,
+# REPLACING the committed placeholder. (The committed ID is the demo
+# instance — your account cannot use it.)
+```
+
+**2. Provision R2**
+
+```bash
+npm run r2:create
+# Bucket binding `ARTIFACTS` and bucket name `crowdpatch-artifacts` are
+# already wired in wrangler.toml.
+```
+
+**3. Apply migrations + seed (remote)**
+
+```bash
+npm run db:migrate:prod
+npm run db:seed:prod
+# Seed inserts the demo user + apps + bug_reports for jsdiff-demo.
+# Edit `api/seeds/dev.sql` first if you want to point at your own repo.
+```
+
+**4. Set Worker secrets**
+
+```bash
+npx wrangler secret put ANTHROPIC_API_KEY
+npx wrangler secret put GITHUB_DEMO_PAT
+# Optional — the production wrangler.toml default is "production", which
+# disables the /debug/anthropic-agents route. Override if you want it on:
+npx wrangler secret put ENVIRONMENT
+```
+
+**5. Bootstrap the Managed Agent**
+
+```bash
+npm run bootstrap:anthropic
+# Idempotent. Prints ANTHROPIC_AGENT_ID + ANTHROPIC_ENVIRONMENT_ID.
+# Set both as Worker secrets:
+npx wrangler secret put ANTHROPIC_AGENT_ID
+npx wrangler secret put ANTHROPIC_ENVIRONMENT_ID
+```
+
+**6. Configure the API host (one of two options)**
+
+- **Subdomain on workers.dev (default, no DNS setup):** comment out the
+  `routes = [...]` block in `api/wrangler.toml` — your Worker will publish
+  to `crowdpatch-api.<your-subdomain>.workers.dev`.
+- **Custom domain:** replace the pattern in `routes = [...]` with your
+  own zone (zone must already be in your CF account). Then update the
+  CORS allowlist near the top of `api/src/index.ts` to include your
+  frontend origin(s).
+
+**7. Deploy the API**
+
+```bash
+cd api
+npx wrangler deploy
+```
+
+**8. Deploy the web**
+
+```bash
+cd web
+cp .env.production.local.example .env.production.local
+# Edit .env.production.local and set NEXT_PUBLIC_API_BASE to your API
+# URL (workers.dev subdomain or your custom domain).
+npm run deploy
+# Pushes a static export to Cloudflare Pages under project name
+# `crowdpatch-web`. First deploy will prompt you to create the project.
+```
+
+**Done.** Open your Pages URL → click the demo button → the agent will
+fix the seeded bug in your repo and open a PR.
+
 ## Hosted version
 
-A managed deployment at [crowdpatch.ai](https://crowdpatch.ai) is in the
-works — same engine, plus the SaaS layer (auth, billing, multi-tenant
-projects). Until then, self-hosting is the canonical way to use it.
+A managed deployment at [crowdpatch.dev](https://crowdpatch.dev) runs
+this same codebase against the demo target. Until SaaS layer (auth,
+billing, multi-tenant projects) lands, self-hosting via the steps above
+is the canonical way to point CrowdPatch at your own repos.
 
 ## License
 
