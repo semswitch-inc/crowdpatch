@@ -43,6 +43,21 @@ export interface BugReportInsert {
   severity: "low" | "medium" | "high";
 }
 
+export interface AppInsert {
+  id: string;
+  owner_user_id: string;
+  github_repo_url: string;
+  display_name: string;
+  default_branch: string;
+  // Optional toolchain columns are typed `string | null` (NOT `| undefined`).
+  // The route handler normalizes missing/blank inputs to null before calling
+  // createApp so agentPrompt.ts:26-28 fallbacks (npm install / npm test / no
+  // notes block) keep working — empty strings would defeat them.
+  setup_commands: string | null;
+  test_commands: string | null;
+  agent_notes: string | null;
+}
+
 export interface FixJobInsert {
   id: string;
   app_id: string;
@@ -106,6 +121,32 @@ export async function getApp(
     .bind(id)
     .first<AppRow>();
   return row ?? null;
+}
+
+export async function createApp(db: D1Database, row: AppInsert): Promise<void> {
+  // created_at defaults to unixepoch() via the table schema (migration 0001).
+  // FK on owner_user_id raises SQLITE_CONSTRAINT if the parent user doesn't
+  // exist — the route hardcodes 'user_uploader_hassan' (verified by Gate A
+  // pre-flight on the seeded users row), so a violation here means the seed
+  // was lost and the deploy should halt.
+  await db
+    .prepare(
+      `INSERT INTO apps
+         (id, owner_user_id, github_repo_url, display_name,
+          default_branch, setup_commands, test_commands, agent_notes)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+    )
+    .bind(
+      row.id,
+      row.owner_user_id,
+      row.github_repo_url,
+      row.display_name,
+      row.default_branch,
+      row.setup_commands,
+      row.test_commands,
+      row.agent_notes,
+    )
+    .run();
 }
 
 export async function createBugReport(

@@ -92,13 +92,14 @@ function isNotFound(err: unknown): boolean {
 
 // Parse owner + repo from a github_repo_url like "https://github.com/owner/repo"
 // or "https://github.com/owner/repo.git" (with optional trailing slash).
-// Returns null on malformed input.
+// Returns null on malformed input. Rejects query strings, hash fragments,
+// and whitespace anywhere in the owner/repo segments — none of those are
+// valid for `git clone` and the agent path would fail downstream anyway.
 export function parseRepoUrl(
   url: string,
 ): { owner: string; repo: string } | null {
-  const match = /^https:\/\/github\.com\/([^/]+)\/([^/]+?)(?:\.git)?\/?$/.exec(
-    url,
-  );
+  const match =
+    /^https:\/\/github\.com\/([^/?#\s]+)\/([^/?#\s]+?)(?:\.git)?\/?$/.exec(url);
   if (!match) return null;
   const owner = match[1];
   const repo = match[2];

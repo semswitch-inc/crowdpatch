@@ -2,6 +2,7 @@ import { Hono } from "hono";
 import { cors } from "hono/cors";
 import Anthropic from "@anthropic-ai/sdk";
 
+import apps from "./routes/apps";
 import bugReports from "./routes/bugReports";
 import fixJobs from "./routes/fixJobs";
 
@@ -52,6 +53,7 @@ app.use(
   }),
 );
 
+app.route("/api", apps);
 app.route("/api", bugReports);
 app.route("/api", fixJobs);
 
