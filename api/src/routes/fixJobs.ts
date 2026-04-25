@@ -633,7 +633,7 @@ function buildRecoveryPrBody(
     .split("\n")
     .map((line) => `> ${line}`)
     .join("\n");
-  return `Automated fix opened by [CrowdPatch](https://crowdpatch.ai) using Anthropic's Managed Agents.
+  return `Automated fix opened by [CrowdPatch](https://crowdpatch.dev) using Anthropic's Managed Agents.
 
 **Submitted report**
 - Title: ${bugTitle}

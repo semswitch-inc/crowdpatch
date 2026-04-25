@@ -5,10 +5,12 @@ compatibility_flags = ["nodejs_compat"]
 
 workers_dev = true
 
-# Custom domain — uncomment on Day 3 after crowdpatch.ai DNS is live on Cloudflare.
-# routes = [
-#   { pattern = "api.crowdpatch.ai/*", zone_name = "crowdpatch.ai" }
-# ]
+# Custom domain — Cloudflare auto-provisions DNS + TLS for api.crowdpatch.dev
+# on deploy. No manual CNAME needed; the zone (crowdpatch.dev) must already
+# be in this CF account.
+routes = [
+  { pattern = "api.crowdpatch.dev", custom_domain = true }
+]
 
 # Default vars — used by `wrangler dev` and by any plain `wrangler deploy`
 # that does not pass `--env`. The /debug/anthropic-agents route in src/index.ts
