@@ -143,20 +143,38 @@ function HeroExperience() {
 
 export default function Demo() {
   return (
-    <div className="flex flex-1 flex-col">
+    // cp-page (not a plain flex column) so the demo gets the same layered
+    // radial-gradient background the landing uses, not just the subtler
+    // body wash.
+    <div className="cp-page">
       {/* ── Header ─────────────────────────────────────────── */}
-      <header className="flex w-full items-center justify-between border-b border-ink-800 bg-ink-950/70 px-6 py-4 backdrop-blur-sm sm:px-12">
-        <Link href="/" className="flex items-center gap-2.5">
-          <Image src="/logomark.svg" alt="" width={28} height={28} priority />
-          <span className="text-[15px] font-700 tracking-tight text-ink-50">
-            CrowdPatch
-          </span>
+      {/* Reuses the landing's .cp-header / .cp-brand styling so the demo's
+          chrome matches the landing pixel-for-pixel (sticky, 14px blur,
+          18px·40px padding, 28px logomark, 15px brand name @ weight 600).
+          The GitHub link keeps its Tailwind treatment so it stays visible
+          on mobile (cp-nav's mobile rule would otherwise hide it). */}
+      <header className="cp-header">
+        <Link href="/" className="cp-brand">
+          <Image
+            className="cp-brand-mark"
+            src="/logomark.svg"
+            alt=""
+            width={28}
+            height={28}
+            priority
+          />
+          <span className="cp-brand-name">CrowdPatch</span>
         </Link>
         <Link
           href={REPO_URL}
           target="_blank"
           rel="noopener noreferrer"
-          className="text-sm font-500 text-ink-300 underline-offset-4 transition-colors hover:text-orange-400 hover:underline"
+          // inline-flex + min-h-10 keeps the link box 40px tall so the
+          // header inner-height matches the landing (whose right side is a
+          // ~40px cp-nav-cta button). Without this, the cp-header bottom
+          // border sits ~12px higher than the landing and the brand text
+          // appears to jump when nav-ing between the two pages.
+          className="inline-flex items-center min-h-10 text-sm font-500 text-ink-300 underline-offset-4 transition-colors hover:text-orange-400 hover:underline"
         >
           View on GitHub →
         </Link>
