@@ -27,6 +27,15 @@ export type Bindings = {
   // returns 503 if either is unset.
   ANTHROPIC_AGENT_ID: string;
   ANTHROPIC_ENVIRONMENT_ID: string;
+
+  // Optional A/B/C/D agent IDs for prompt-variant tournaments. Selected per
+  // request via POST /api/fix-jobs `agent_variant` field. Unset → 503 if a
+  // variant is requested. The legacy ANTHROPIC_AGENT_ID above is the default
+  // when no variant is specified.
+  ANTHROPIC_AGENT_ID_A?: string;
+  ANTHROPIC_AGENT_ID_B?: string;
+  ANTHROPIC_AGENT_ID_C?: string;
+  ANTHROPIC_AGENT_ID_D?: string;
 };
 
 const app = new Hono<{ Bindings: Bindings }>();

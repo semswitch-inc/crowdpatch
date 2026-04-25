@@ -237,6 +237,23 @@ export class AgentSessionDO extends DurableObject<Bindings> {
     let sessionId: string | null = null;
     let agentReplyText = "";
 
+    // Captured from the FIRST span.model_request_end event in the session
+    // stream — see migration 0004 for why first-only. Flushed to D1 in the
+    // finally below so it persists across success, failure, and timeout.
+    //
+    // NOTE: firstUsage is mutated inside the inner `drain` async closure,
+    // which TS treats as opaque for control-flow narrowing. After the
+    // await on Promise.race, TS believes firstUsage is still null and
+    // narrows `if (firstUsage !== null)` to `never`. The `as FirstUsage |
+    // null` cast in the finally block widens past that limitation.
+    type FirstUsage = {
+      cache_creation_input_tokens: number | null;
+      cache_read_input_tokens: number | null;
+      input_tokens: number | null;
+      output_tokens: number | null;
+    };
+    let firstUsage: FirstUsage | null = null;
+
     try {
       // Open Managed Agent session with the repo mounted via authorization_token.
       // The PAT lives ONLY in the resource attachment; never in the prompt.
@@ -303,7 +320,34 @@ export class AgentSessionDO extends DurableObject<Bindings> {
             type?: string;
             stop_reason?: { type?: string };
             error?: { message?: string };
+            model_usage?: {
+              cache_creation_input_tokens?: number;
+              cache_read_input_tokens?: number;
+              input_tokens?: number;
+              output_tokens?: number;
+            };
           };
+          // Capture FIRST model_usage we see. Subsequent requests include
+          // conversation history and aren't comparable across runs.
+          if (firstUsage === null && e.type === "span.model_request_end") {
+            const u = e.model_usage;
+            if (u && typeof u === "object") {
+              firstUsage = {
+                cache_creation_input_tokens:
+                  typeof u.cache_creation_input_tokens === "number"
+                    ? u.cache_creation_input_tokens
+                    : null,
+                cache_read_input_tokens:
+                  typeof u.cache_read_input_tokens === "number"
+                    ? u.cache_read_input_tokens
+                    : null,
+                input_tokens:
+                  typeof u.input_tokens === "number" ? u.input_tokens : null,
+                output_tokens:
+                  typeof u.output_tokens === "number" ? u.output_tokens : null,
+              };
+            }
+          }
           if (e.type === "session.status_idle") {
             const stopType = e.stop_reason?.type ?? "unknown";
             if (stopType === "end_turn") return;
@@ -430,6 +474,25 @@ export class AgentSessionDO extends DurableObject<Bindings> {
       });
 
       this.markComplete();
+    } finally {
+      // Persist usage stats from the first model_request_end on every
+      // terminal path (success, agent_no_push, timeout, agent_error).
+      // Best-effort — don't let a usage-write failure mask the real outcome.
+      // See FirstUsage type-alias declaration above for why the cast is here.
+      const captured = firstUsage as FirstUsage | null;
+      if (captured !== null) {
+        try {
+          await updateFixJob(this.env.DB, payload.fix_job_id, {
+            first_cache_creation_input_tokens:
+              captured.cache_creation_input_tokens,
+            first_cache_read_input_tokens: captured.cache_read_input_tokens,
+            first_input_tokens: captured.input_tokens,
+            first_output_tokens: captured.output_tokens,
+          });
+        } catch {
+          // best-effort; usage stats are diagnostic, not load-bearing
+        }
+      }
     }
   }
 }

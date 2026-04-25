@@ -65,6 +65,11 @@ export interface FixJobInsert {
   branch_name: string;
   status: "pending" | "running" | "succeeded" | "failed" | "cancelled";
   started_at: number | null;
+  // Which prompt variant ran (A/B/C/D). NULL = legacy unspecified (uses
+  // ANTHROPIC_AGENT_ID env var, not one of the variant secrets). Persisted
+  // at INSERT time because the variant selection is a property of the
+  // request, not something the agent can change mid-run.
+  agent_variant: string | null;
 }
 
 // Patchable subset of fix_jobs columns. Only fields explicitly listed here
@@ -81,6 +86,12 @@ export interface FixJobUpdate {
   cost_credits?: number;
   ended_reason?: string | null;
   completed_at?: number | null;
+  // Captured from the FIRST span.model_request_end event. See migration 0004
+  // for why first-only (deterministic platform-prompt-drift fingerprint).
+  first_cache_creation_input_tokens?: number | null;
+  first_cache_read_input_tokens?: number | null;
+  first_input_tokens?: number | null;
+  first_output_tokens?: number | null;
 }
 
 const ALLOWED_UPDATE_KEYS: ReadonlySet<string> = new Set<keyof FixJobUpdate>([
@@ -94,6 +105,10 @@ const ALLOWED_UPDATE_KEYS: ReadonlySet<string> = new Set<keyof FixJobUpdate>([
   "cost_credits",
   "ended_reason",
   "completed_at",
+  "first_cache_creation_input_tokens",
+  "first_cache_read_input_tokens",
+  "first_input_tokens",
+  "first_output_tokens",
 ]);
 
 export async function getBugReport(
@@ -188,8 +203,8 @@ export async function createFixJob(
       .prepare(
         `INSERT INTO fix_jobs
            (id, app_id, bug_report_ids_json, branch_name, status,
-            started_at, created_at, updated_at)
-         VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+            started_at, created_at, updated_at, agent_variant)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
       )
       .bind(
         job.id,
@@ -200,6 +215,7 @@ export async function createFixJob(
         job.started_at,
         now,
         now,
+        job.agent_variant,
       ),
     ...bugReportIds.map((bugReportId) =>
       db

@@ -77,6 +77,22 @@ export class GitHubClient {
     );
     return (response.data as { commit: { sha: string } }).commit.sha;
   }
+
+  // Used by the recovery endpoint to keep PR-opening idempotent. If a previous
+  // recover call (or the DO itself) already opened a PR for this branch, we
+  // return its URL instead of opening a duplicate.
+  async findOpenPrForBranch(
+    owner: string,
+    repo: string,
+    branch: string,
+  ): Promise<{ number: number; html_url: string } | null> {
+    const response = await this.octokit.request(
+      "GET /repos/{owner}/{repo}/pulls",
+      { owner, repo, head: `${owner}:${branch}`, state: "open" },
+    );
+    const list = response.data as Array<{ number: number; html_url: string }>;
+    return list.length > 0 ? (list[0] ?? null) : null;
+  }
 }
 
 // @octokit/core throws RequestError objects with a numeric .status. We check
