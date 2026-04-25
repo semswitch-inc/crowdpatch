@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import Image from "next/image";
 import { useSearchParams } from "next/navigation";
 import { Suspense } from "react";
 
@@ -20,30 +21,41 @@ function FixBugButtonFromQuery() {
 
 export default function Home() {
   return (
-    <div className="flex flex-1 flex-col bg-zinc-50 font-sans dark:bg-black">
-      <header className="flex w-full items-center justify-between border-b border-zinc-200 bg-white px-6 py-4 dark:border-zinc-800 dark:bg-black sm:px-12">
-        <span className="text-sm font-semibold tracking-tight text-zinc-900 dark:text-zinc-100">
-          CrowdPatch
-        </span>
+    <div className="flex flex-1 flex-col">
+      {/* ── Header ─────────────────────────────────────────── */}
+      <header className="flex w-full items-center justify-between border-b border-ink-800 bg-ink-950/70 px-6 py-4 backdrop-blur-sm sm:px-12">
+        <Link href="/" className="flex items-center gap-2.5">
+          <Image src="/logomark.svg" alt="" width={28} height={28} priority />
+          <span className="text-[15px] font-700 tracking-tight text-ink-50">
+            CrowdPatch
+          </span>
+        </Link>
         <Link
           href={REPO_URL}
           target="_blank"
           rel="noopener noreferrer"
-          className="text-sm text-zinc-700 underline-offset-4 hover:underline dark:text-zinc-300"
+          className="text-sm font-500 text-ink-300 underline-offset-4 transition-colors hover:text-orange-400 hover:underline"
         >
           View on GitHub →
         </Link>
       </header>
 
-      <main className="flex w-full max-w-3xl flex-1 flex-col items-center gap-12 self-center bg-white px-8 py-24 dark:bg-black sm:items-start sm:px-16">
-        <section className="flex flex-col items-center gap-4 text-center sm:items-start sm:text-left">
-          <span className="text-xs font-semibold uppercase tracking-[0.2em] text-zinc-500 dark:text-zinc-400">
-            CrowdPatch
+      {/* ── Main ───────────────────────────────────────────── */}
+      <main className="flex w-full max-w-3xl flex-1 flex-col gap-12 self-center px-8 py-24 sm:items-start sm:px-16">
+        <section className="flex flex-col items-start gap-5 text-left">
+          {/* Eyebrow tag — vibrant, not whisper-grey */}
+          <span className="inline-flex items-center gap-2 rounded-full border border-orange-500/40 bg-orange-500/10 px-3 py-1 font-mono text-[11px] font-600 uppercase tracking-[0.18em] text-orange-300">
+            <span className="h-1.5 w-1.5 rounded-full bg-orange-400 shadow-[0_0_8px] shadow-orange-400" />
+            Closed-loop bug-fix economy
           </span>
-          <h1 className="max-w-xl text-4xl font-semibold leading-tight tracking-tight text-zinc-900 dark:text-zinc-50 sm:text-5xl">
-            Closed-loop bug-fix economy.
+
+          <h1 className="max-w-2xl text-5xl font-700 leading-[1.05] tracking-[-0.02em] text-ink-50 sm:text-[64px]">
+            Community-sourced bugs.
+            <br />
+            <span className="text-orange-400">AI-shipped fixes.</span>
           </h1>
-          <p className="max-w-md text-base leading-7 text-zinc-600 dark:text-zinc-400">
+
+          <p className="max-w-md text-base leading-7 text-ink-200">
             Watch a Claude Managed Agent investigate the bug, write a fix, and
             open a PR — live, in real time.
           </p>
@@ -51,25 +63,24 @@ export default function Home() {
 
         <Suspense
           fallback={
-            <div className="text-sm text-zinc-500 dark:text-zinc-500">
-              Loading…
-            </div>
+            <div className="font-mono text-sm text-ink-300">Loading…</div>
           }
         >
           <FixBugButtonFromQuery />
         </Suspense>
 
-        <section className="flex max-w-xl flex-col gap-2 border-t border-zinc-200 pt-8 text-sm text-zinc-600 dark:border-zinc-800 dark:text-zinc-400">
-          <h2 className="text-base font-semibold text-zinc-900 dark:text-zinc-100">
+        {/* ── How this works ─────────────────────────────── */}
+        <section className="flex max-w-xl flex-col gap-3 border-t border-ink-800 pt-8 text-sm leading-6 text-ink-200">
+          <h2 className="font-mono text-xs font-600 uppercase tracking-[0.18em] text-violet-300">
             How this works
           </h2>
-          <p className="leading-6">
+          <p>
             This page is open source —{" "}
             <Link
               href={REPO_URL}
               target="_blank"
               rel="noopener noreferrer"
-              className="text-zinc-900 underline underline-offset-2 hover:no-underline dark:text-zinc-100"
+              className="text-ink-50 underline decoration-orange-500/60 decoration-2 underline-offset-[3px] transition-colors hover:decoration-orange-400"
             >
               view source on GitHub
             </Link>

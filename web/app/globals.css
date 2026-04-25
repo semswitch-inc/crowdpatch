@@ -1,26 +1,241 @@
 @import "tailwindcss";
 
+/* ─────────────────────────────────────────────────────────────
+ * CrowdPatch design tokens — dark-first, vibrant.
+ * Imported into Tailwind v4 via @theme inline so utilities like
+ *   bg-ink-950, text-orange-500, border-violet-400, etc. just work.
+ * ───────────────────────────────────────────────────────────── */
+
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
+  /* INK — neutral spine (cool-violet undertone, never zinc) */
+  --color-ink-50: #f5f3ff;
+  --color-ink-100: #e8e4f5;
+  --color-ink-200: #c8c0db;
+  --color-ink-300: #948aac;
+  --color-ink-400: #6a607f;
+  --color-ink-500: #4a4259;
+  --color-ink-600: #332d41;
+  --color-ink-700: #221d2e;
+  --color-ink-800: #181323;
+  --color-ink-900: #100c1a;
+  --color-ink-950: #0a0712;
+  --color-ink-black: #050309;
+
+  /* ORANGE — brand / CTA / signal */
+  --color-orange-50: #fff4ed;
+  --color-orange-100: #ffe3cc;
+  --color-orange-200: #ffc398;
+  --color-orange-300: #ff9d5e;
+  --color-orange-400: #ff7a2b;
+  --color-orange-500: #ff5c0a;
+  --color-orange-600: #e8410c;
+  --color-orange-700: #c12d12;
+  --color-orange-800: #8a2010;
+  --color-orange-900: #4d1208;
+
+  /* VIOLET — agent / AI / managed runs */
+  --color-violet-50: #f4ecff;
+  --color-violet-100: #e3d2ff;
+  --color-violet-200: #c8a8ff;
+  --color-violet-300: #a87dff;
+  --color-violet-400: #8a52ff;
+  --color-violet-500: #7331f5;
+  --color-violet-600: #5e1fdb;
+  --color-violet-700: #4716a8;
+  --color-violet-800: #2f0d75;
+  --color-violet-900: #1a0744;
+
+  /* LIME — success / merged / credit currency (◈) */
+  --color-lime-50: #f4ffe1;
+  --color-lime-100: #e3ffb3;
+  --color-lime-200: #c4f87a;
+  --color-lime-300: #9aef3a;
+  --color-lime-400: #7ddc1a;
+  --color-lime-500: #5fbb0c;
+  --color-lime-600: #498f08;
+  --color-lime-700: #356608;
+  --color-lime-800: #233f08;
+  --color-lime-900: #122005;
+
+  /* CYAN — running tests / info / diff-add */
+  --color-cyan-300: #67e8f9;
+  --color-cyan-400: #22d3ee;
+  --color-cyan-500: #06b6d4;
+  --color-cyan-600: #0891b2;
+
+  /* RED — failure / revert / error */
+  --color-red-300: #fda4af;
+  --color-red-400: #fb7185;
+  --color-red-500: #ff5c52;
+  --color-red-600: #e11d48;
+  --color-red-700: #be123c;
+
+  /* Page background — the dark with a subtle tri-color wash */
+  --background: var(--color-ink-950);
+  --foreground: var(--color-ink-50);
 }
 
+/* Tailwind v4 theme bridge — exposes the CSS vars as utility classes */
 @theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
+  /* fonts */
+  --font-sans:
+    var(--font-sans), ui-sans-serif, system-ui, -apple-system, "Segoe UI",
+    Roboto, "Helvetica Neue", Arial, sans-serif;
+  --font-mono:
+    var(--font-mono), ui-monospace, "SF Mono", Menlo, Consolas,
+    "Liberation Mono", monospace;
+
+  /* numeric font-weights so font-300/500/600/700 utilities exist (Archivo ships
+     300/500/600/700 — no 400). Tailwind v4 only auto-emits the named weights
+     (font-thin/medium/semibold/bold/etc.) by default, so the patched components
+     using font-500/600/700 need these tokens or the classes are no-ops. */
+  --font-weight-300: 300;
+  --font-weight-500: 500;
+  --font-weight-600: 600;
+  --font-weight-700: 700;
+
+  /* core neutrals (overrides Tailwind's defaults under these names) */
+  --color-ink-50: var(--color-ink-50);
+  --color-ink-100: var(--color-ink-100);
+  --color-ink-200: var(--color-ink-200);
+  --color-ink-300: var(--color-ink-300);
+  --color-ink-400: var(--color-ink-400);
+  --color-ink-500: var(--color-ink-500);
+  --color-ink-600: var(--color-ink-600);
+  --color-ink-700: var(--color-ink-700);
+  --color-ink-800: var(--color-ink-800);
+  --color-ink-900: var(--color-ink-900);
+  --color-ink-950: var(--color-ink-950);
+  --color-ink-black: var(--color-ink-black);
+
+  /* IMPORTANT: we re-map Tailwind's stock palette names that the existing
+     codebase uses (zinc, emerald, blue, amber) to our vibrant equivalents.
+     This means EventLog.tsx + page.tsx + FixBugButton.tsx pick up the new
+     theme without rewriting class strings. */
+  --color-zinc-50: var(--color-ink-50);
+  --color-zinc-100: var(--color-ink-100);
+  --color-zinc-200: var(--color-ink-700); /* light borders → dark borders */
+  --color-zinc-300: var(--color-ink-600);
+  --color-zinc-400: var(--color-ink-300);
+  --color-zinc-500: var(--color-ink-300);
+  --color-zinc-600: var(--color-ink-200);
+  --color-zinc-700: var(--color-ink-700);
+  --color-zinc-800: var(--color-ink-800);
+  --color-zinc-900: var(--color-ink-900);
+  --color-zinc-950: var(--color-ink-950);
+
+  /* emerald → lime (success) */
+  --color-emerald-50: var(--color-lime-900);
+  --color-emerald-200: var(--color-lime-200);
+  --color-emerald-400: var(--color-lime-300);
+  --color-emerald-600: var(--color-lime-400);
+  --color-emerald-700: var(--color-lime-500);
+  --color-emerald-900: var(--color-lime-700);
+  --color-emerald-950: var(--color-lime-900);
+
+  /* blue → violet (agent/work) */
+  --color-blue-50: var(--color-violet-900);
+  --color-blue-200: var(--color-violet-200);
+  --color-blue-400: var(--color-violet-300);
+  --color-blue-600: var(--color-violet-400);
+  --color-blue-700: var(--color-violet-500);
+  --color-blue-900: var(--color-violet-700);
+  --color-blue-950: var(--color-violet-900);
+
+  /* amber → orange (test running / brand) */
+  --color-amber-50: var(--color-orange-900);
+  --color-amber-200: var(--color-orange-200);
+  --color-amber-400: var(--color-orange-300);
+  --color-amber-600: var(--color-orange-400);
+  --color-amber-700: var(--color-orange-500);
+  --color-amber-900: var(--color-orange-700);
+  --color-amber-950: var(--color-orange-900);
+
+  /* red → vibrant red */
+  --color-red-50: var(--color-red-700);
+  --color-red-200: var(--color-red-300);
+  --color-red-300: var(--color-red-300);
+  --color-red-400: var(--color-red-400);
+  --color-red-600: var(--color-red-500);
+  --color-red-700: var(--color-red-600);
+  --color-red-900: var(--color-red-700);
+  --color-red-950: #2a0a10;
+
+  /* explicit accent palettes (for new code that wants to use them) */
+  --color-orange-50: var(--color-orange-50);
+  --color-orange-100: var(--color-orange-100);
+  --color-orange-200: var(--color-orange-200);
+  --color-orange-300: var(--color-orange-300);
+  --color-orange-400: var(--color-orange-400);
+  --color-orange-500: var(--color-orange-500);
+  --color-orange-600: var(--color-orange-600);
+  --color-orange-700: var(--color-orange-700);
+  --color-orange-800: var(--color-orange-800);
+  --color-orange-900: var(--color-orange-900);
+
+  --color-violet-50: var(--color-violet-50);
+  --color-violet-100: var(--color-violet-100);
+  --color-violet-200: var(--color-violet-200);
+  --color-violet-300: var(--color-violet-300);
+  --color-violet-400: var(--color-violet-400);
+  --color-violet-500: var(--color-violet-500);
+  --color-violet-600: var(--color-violet-600);
+  --color-violet-700: var(--color-violet-700);
+  --color-violet-800: var(--color-violet-800);
+  --color-violet-900: var(--color-violet-900);
+
+  --color-lime-50: var(--color-lime-50);
+  --color-lime-100: var(--color-lime-100);
+  --color-lime-200: var(--color-lime-200);
+  --color-lime-300: var(--color-lime-300);
+  --color-lime-400: var(--color-lime-400);
+  --color-lime-500: var(--color-lime-500);
+  --color-lime-600: var(--color-lime-600);
+  --color-lime-700: var(--color-lime-700);
+  --color-lime-800: var(--color-lime-800);
+  --color-lime-900: var(--color-lime-900);
+
+  --color-cyan-300: var(--color-cyan-300);
+  --color-cyan-400: var(--color-cyan-400);
+  --color-cyan-500: var(--color-cyan-500);
+  --color-cyan-600: var(--color-cyan-600);
+
+  /* page bg/fg */
+  --color-background: var(--color-ink-950);
+  --color-foreground: var(--color-ink-50);
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
-}
-
+/* ─── Body baseline ──────────────────────────────────────────── */
+html,
 body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  background: var(--color-ink-950);
+  color: var(--color-ink-50);
+  font-family: var(--font-sans), ui-sans-serif, system-ui, sans-serif;
+  font-weight: 500; /* Archivo's de-facto regular (no 400 shipped) */
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+}
+
+/* The signature tri-color page wash — soft orange / violet / lime
+ * over ink-950. Felt, not seen. Comment out for solid black. */
+body {
+  background-image:
+    radial-gradient(60% 60% at 12% 8%, rgb(255 92 10 / 0.14), transparent 65%),
+    radial-gradient(50% 60% at 88% 6%, rgb(138 82 255 / 0.18), transparent 60%),
+    radial-gradient(70% 60% at 50% 105%, rgb(125 220 26 / 0.1), transparent 65%);
+  background-attachment: fixed;
+}
+
+::selection {
+  background: var(--color-orange-500);
+  color: var(--color-ink-black);
+}
+
+/* Mono baseline for code/kbd/pre */
+code,
+kbd,
+samp,
+pre {
+  font-family: var(--font-mono), ui-monospace, monospace;
+  font-weight: 500;
 }
