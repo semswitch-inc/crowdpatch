@@ -37,7 +37,6 @@ export default function FixBugButton({ bugReportId }: FixBugButtonProps) {
   const [state, setState] = useState<State>({ status: "idle" });
   const closeRef = useRef<(() => void) | null>(null);
 
-  // Tear down EventSource if the component unmounts mid-run.
   useEffect(() => {
     return () => {
       closeRef.current?.();
@@ -83,7 +82,6 @@ export default function FixBugButton({ bugReportId }: FixBugButtonProps) {
         startTs,
       });
 
-      // Subscribe to live SSE stream of semantic event cards.
       const close = subscribeToFixJob(`${apiBase}${stream_url}`, {
         onCard: (card) => {
           setState((prev) => {
@@ -126,8 +124,6 @@ export default function FixBugButton({ bugReportId }: FixBugButtonProps) {
           closeRef.current = null;
         },
         onTransportError: () => {
-          // Browser auto-reconnects on transport errors; just log.
-          // Not terminal — only error_event closes the UI.
           if (typeof console !== "undefined") {
             console.warn(
               "[FixBugButton] EventSource transport error (browser will reconnect)",
@@ -154,40 +150,49 @@ export default function FixBugButton({ bugReportId }: FixBugButtonProps) {
     setState({ status: "idle" });
   }
 
+  /* ── IDLE ─────────────────────────────────────────────── */
   if (state.status === "idle") {
     return (
       <button
         type="button"
         onClick={handleClick}
-        className="rounded-lg bg-zinc-900 px-6 py-3 text-base font-medium text-white shadow-sm transition-colors hover:bg-zinc-800 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-zinc-900 dark:bg-white dark:text-black dark:hover:bg-zinc-200 dark:focus-visible:outline-white"
+        className="group relative inline-flex items-center gap-2 overflow-hidden rounded-lg bg-orange-500 px-6 py-3.5 text-base font-600 text-ink-black shadow-[0_0_0_1px_rgba(255,124,43,.4),0_8px_24px_-8px_rgba(255,92,10,.6)] transition-all hover:bg-orange-400 hover:shadow-[0_0_0_1px_rgba(255,154,94,.6),0_12px_32px_-8px_rgba(255,92,10,.8)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-orange-400 active:translate-y-px"
       >
-        Try CrowdPatch on {bugReportId} →
+        <span>
+          Try CrowdPatch on <span className="font-mono">{bugReportId}</span>
+        </span>
+        <span className="transition-transform group-hover:translate-x-0.5">
+          →
+        </span>
       </button>
     );
   }
 
+  /* ── RUNNING ──────────────────────────────────────────── */
   if (state.status === "running") {
     return (
       <div className="flex w-full flex-col gap-4">
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-3 rounded-lg border border-violet-500/30 bg-violet-500/[0.08] px-4 py-3">
           <Spinner />
-          <span className="text-base font-medium text-zinc-900 dark:text-zinc-100">
+          <span className="text-base font-600 text-violet-100">
             Agent working…
           </span>
           {state.fixJobId && (
-            <span className="font-mono text-xs text-zinc-500 dark:text-zinc-500">
+            <span className="ml-auto rounded border border-violet-500/30 bg-ink-950/40 px-2 py-0.5 font-mono text-xs text-violet-200">
               {state.fixJobId.slice(-8).toLowerCase()}
             </span>
           )}
         </div>
-        <p className="text-sm text-zinc-600 dark:text-zinc-400">
-          {`Live from the Managed Agent. Typically 1–5 minutes; safe to keep this tab open.`}
+        <p className="text-sm text-ink-200">
+          Live from the Managed Agent. Typically 1–5 minutes; safe to keep this
+          tab open.
         </p>
         <EventLog cards={state.cards} startTs={state.startTs} />
       </div>
     );
   }
 
+  /* ── SUCCESS ──────────────────────────────────────────── */
   if (state.status === "success") {
     return (
       <div className="flex w-full flex-col gap-4">
@@ -195,18 +200,22 @@ export default function FixBugButton({ bugReportId }: FixBugButtonProps) {
           href={state.prUrl}
           target="_blank"
           rel="noopener noreferrer"
-          className="self-start rounded-lg bg-emerald-600 px-6 py-3 text-base font-medium text-white shadow-sm transition-colors hover:bg-emerald-700 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-emerald-600"
+          className="group relative inline-flex w-fit items-center gap-2 rounded-lg bg-lime-400 px-6 py-3.5 text-base font-700 text-ink-black shadow-[0_0_0_1px_rgba(154,239,58,.5),0_8px_24px_-8px_rgba(125,220,26,.7)] transition-all hover:bg-lime-300 hover:shadow-[0_0_0_1px_rgba(196,248,122,.7),0_12px_32px_-8px_rgba(125,220,26,.9)]"
         >
-          ✓ View pull request →
+          <span aria-hidden="true">✓</span>
+          <span>View pull request</span>
+          <span className="transition-transform group-hover:translate-x-0.5">
+            →
+          </span>
         </a>
         <div className="flex items-center gap-3">
-          <span className="font-mono text-xs text-zinc-500 dark:text-zinc-500">
-            fix_job_id: {state.fixJobId}
+          <span className="font-mono text-xs text-ink-300">
+            fix_job_id: <span className="text-ink-100">{state.fixJobId}</span>
           </span>
           <button
             type="button"
             onClick={reset}
-            className="text-sm text-zinc-600 underline-offset-4 hover:underline dark:text-zinc-400"
+            className="text-sm text-orange-400 underline-offset-4 hover:underline"
           >
             Run another
           </button>
@@ -216,16 +225,17 @@ export default function FixBugButton({ bugReportId }: FixBugButtonProps) {
     );
   }
 
+  /* ── ERROR ────────────────────────────────────────────── */
   return (
     <div className="flex w-full flex-col gap-4">
-      <div className="rounded-lg border border-red-300 bg-red-50 px-4 py-3 text-sm text-red-900 dark:border-red-900 dark:bg-red-950 dark:text-red-200">
-        <strong className="font-medium">Fix-job failed.</strong>{" "}
+      <div className="rounded-lg border border-red-500/40 bg-red-500/[0.10] px-4 py-3 text-sm text-red-200">
+        <strong className="font-600 text-red-100">Fix-job failed.</strong>{" "}
         <span className="font-mono text-xs">{state.message}</span>
       </div>
       <button
         type="button"
         onClick={reset}
-        className="self-start rounded-lg border border-zinc-300 bg-white px-4 py-2 text-sm font-medium text-zinc-900 transition-colors hover:bg-zinc-50 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-100 dark:hover:bg-zinc-800"
+        className="self-start rounded-lg border border-ink-700 bg-ink-900 px-4 py-2 text-sm font-500 text-ink-100 transition-colors hover:border-orange-500/50 hover:bg-ink-800 hover:text-orange-300"
       >
         Retry
       </button>
@@ -254,7 +264,7 @@ async function extractErrorDetail(res: Response): Promise<string> {
       return `${errMsg}${details}`;
     }
   } catch {
-    // non-JSON response — fall through
+    // non-JSON response
   }
   return `HTTP ${res.status}`;
 }
@@ -264,7 +274,7 @@ function Spinner() {
     <span
       role="status"
       aria-label="Loading"
-      className="inline-block h-4 w-4 animate-spin rounded-full border-2 border-zinc-300 border-t-zinc-900 dark:border-zinc-700 dark:border-t-zinc-100"
+      className="inline-block h-4 w-4 animate-spin rounded-full border-2 border-violet-500/30 border-t-violet-300"
     />
   );
 }
