@@ -349,7 +349,7 @@ export default function FixBugButton({
         <button
           type="button"
           onClick={handleClick}
-          className="group relative inline-flex items-center gap-2 overflow-hidden rounded-lg bg-orange-500 px-6 py-3.5 text-base font-600 text-ink-black shadow-[0_0_0_1px_rgba(255,124,43,.4),0_8px_24px_-8px_rgba(255,92,10,.6)] transition-all hover:bg-orange-400 hover:shadow-[0_0_0_1px_rgba(255,154,94,.6),0_12px_32px_-8px_rgba(255,92,10,.8)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-orange-400 active:translate-y-px"
+          className="cp-btn cp-btn-primary"
         >
           <span>
             {ctaLabel ?? (
@@ -359,7 +359,7 @@ export default function FixBugButton({
               </>
             )}
           </span>
-          <span className="transition-transform group-hover:translate-x-0.5">
+          <span className="arrow" aria-hidden>
             →
           </span>
         </button>
@@ -371,7 +371,7 @@ export default function FixBugButton({
   if (state.status === "running") {
     return (
       <div className="flex w-full flex-col gap-4">
-        <div className="flex items-center gap-3 rounded-lg border border-violet-500/30 bg-violet-500/[0.08] px-4 py-3">
+        <div className="cp-card tint-agent bar-agent pad-md flex items-center gap-3">
           <Spinner />
           <span className="text-base font-600 text-violet-100">
             Agent working…
@@ -382,7 +382,7 @@ export default function FixBugButton({
             </span>
           )}
         </div>
-        <p className="text-sm text-ink-200">
+        <p className="cp-small">
           Live from the Managed Agent. Typically 1–5 minutes; safe to keep this
           tab open.
         </p>
@@ -397,8 +397,8 @@ export default function FixBugButton({
     return (
       <div className="flex w-full flex-col gap-4">
         {trimmedSummary && (
-          <blockquote className="rounded-lg border-l-4 border-lime-500/60 bg-lime-500/[0.08] px-4 py-3 text-sm text-lime-100">
-            <div className="mb-1 text-xs font-600 uppercase tracking-[0.12em] text-lime-200">
+          <blockquote className="cp-card tint-success bar-success pad-md text-sm text-lime-100">
+            <div className="mb-1 font-mono text-xs font-600 uppercase tracking-[0.14em] text-lime-200">
               What Claude changed
             </div>
             <pre className="whitespace-pre-wrap break-words font-sans text-sm text-lime-50">
@@ -410,11 +410,17 @@ export default function FixBugButton({
           href={state.prUrl}
           target="_blank"
           rel="noopener noreferrer"
-          className="group relative inline-flex w-fit items-center gap-2 rounded-lg bg-lime-400 px-6 py-3.5 text-base font-700 text-ink-black shadow-[0_0_0_1px_rgba(154,239,58,.5),0_8px_24px_-8px_rgba(125,220,26,.7)] transition-all hover:bg-lime-300 hover:shadow-[0_0_0_1px_rgba(196,248,122,.7),0_12px_32px_-8px_rgba(125,220,26,.9)]"
+          className="cp-btn cp-btn-primary w-fit"
+          style={{
+            background:
+              "linear-gradient(135deg, var(--lime-300), var(--lime-400))",
+            boxShadow:
+              "0 0 0 1px rgb(125 220 26 / .45), 0 10px 28px -6px rgb(125 220 26 / .6)",
+          }}
         >
-          <span aria-hidden="true">✓</span>
+          <span aria-hidden>✓</span>
           <span>View pull request</span>
-          <span className="transition-transform group-hover:translate-x-0.5">
+          <span className="arrow" aria-hidden>
             →
           </span>
         </a>
@@ -426,7 +432,7 @@ export default function FixBugButton({
           <button
             type="button"
             onClick={reset}
-            className="text-sm text-orange-400 underline-offset-4 hover:underline"
+            className="cp-btn cp-btn-sm cp-btn-ghost"
           >
             Run another
           </button>
@@ -439,12 +445,12 @@ export default function FixBugButton({
   /* ── ERROR ────────────────────────────────────────────── */
   return (
     <div className="flex w-full flex-col gap-4">
-      <div className="rounded-lg border border-red-500/40 bg-red-500/[0.10] px-4 py-3 text-sm text-red-200">
+      <div className="cp-card tint-danger bar-danger pad-md text-sm text-red-200">
         <strong className="font-600 text-red-100">Fix-job failed.</strong>{" "}
         <span className="font-mono text-xs">{state.message}</span>
       </div>
       {refundedAmount !== null && (
-        <span className="inline-flex w-fit items-center gap-1.5 rounded-full border border-lime-500/40 bg-lime-500/[0.10] px-3 py-1 text-xs font-600 text-lime-100">
+        <span className="inline-flex w-fit items-center gap-1.5 rounded-full border border-lime-500/40 bg-lime-500/[0.10] px-3 py-1 font-mono text-xs font-600 text-lime-100">
           <span
             aria-hidden="true"
             className="h-1.5 w-1.5 rounded-full bg-lime-400 shadow-[0_0_6px] shadow-lime-400"
@@ -456,7 +462,7 @@ export default function FixBugButton({
       <button
         type="button"
         onClick={reset}
-        className="self-start rounded-lg border border-ink-700 bg-ink-900 px-4 py-2 text-sm font-500 text-ink-100 transition-colors hover:border-orange-500/50 hover:bg-ink-800 hover:text-orange-300"
+        className="cp-btn cp-btn-primary self-start"
       >
         Retry
       </button>

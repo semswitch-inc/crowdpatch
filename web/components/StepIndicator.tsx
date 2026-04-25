@@ -16,7 +16,7 @@ const STEPS: ReadonlyArray<{ n: 1 | 2 | 3 | 4; label: string }> = [
 
 export default function StepIndicator({ active }: StepIndicatorProps) {
   return (
-    <ol className="flex w-full flex-wrap items-center gap-2 text-xs font-600 sm:text-sm">
+    <ol className="flex w-full flex-wrap items-center gap-2 font-mono text-[11px] font-600 uppercase tracking-[0.12em] sm:text-xs">
       {STEPS.map((step, idx) => {
         const state =
           step.n < active ? "done" : step.n === active ? "active" : "future";

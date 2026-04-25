@@ -115,13 +115,11 @@ export default function AppSubmissionForm({
   return (
     <form
       onSubmit={handleSubmit}
-      className="flex w-full flex-col gap-5 rounded-xl border border-ink-700 bg-ink-900/40 p-6"
+      className="cp-card pad-md flex w-full flex-col gap-5"
     >
       <div className="flex flex-col gap-1">
-        <h2 className="text-base font-600 text-ink-50">
-          Connect an app to CrowdPatch.
-        </h2>
-        <p className="text-sm text-ink-300">
+        <h2 className="cp-h3">Connect an app to CrowdPatch.</h2>
+        <p className="cp-small">
           Start with the pre-filled jsdiff demo, or wire in your own repo. We
           save this so a tester can file bugs against it next.
         </p>
@@ -139,7 +137,7 @@ export default function AppSubmissionForm({
           maxLength={80}
           value={displayName}
           onChange={(e) => setDisplayName(e.target.value)}
-          className="w-full rounded-md border border-ink-700 bg-ink-950 px-3 py-2 text-sm text-ink-50 placeholder:text-ink-400 focus-visible:border-orange-500 focus-visible:outline-none"
+          className="cp-input"
         />
       </Field>
 
@@ -156,7 +154,7 @@ export default function AppSubmissionForm({
           maxLength={255}
           value={repoUrl}
           onChange={(e) => setRepoUrl(e.target.value)}
-          className="w-full rounded-md border border-ink-700 bg-ink-950 px-3 py-2 font-mono text-xs text-ink-50 placeholder:text-ink-400 focus-visible:border-orange-500 focus-visible:outline-none"
+          className="cp-input mono"
         />
       </Field>
 
@@ -173,12 +171,12 @@ export default function AppSubmissionForm({
           maxLength={80}
           value={defaultBranch}
           onChange={(e) => setDefaultBranch(e.target.value)}
-          className="w-full rounded-md border border-ink-700 bg-ink-950 px-3 py-2 font-mono text-xs text-ink-50 placeholder:text-ink-400 focus-visible:border-orange-500 focus-visible:outline-none"
+          className="cp-input mono"
         />
       </Field>
 
       <details className="group rounded-md border border-ink-700 bg-ink-950/40">
-        <summary className="flex cursor-pointer list-none items-center justify-between px-3 py-2 text-xs font-600 uppercase tracking-[0.12em] text-ink-300 hover:text-orange-300">
+        <summary className="flex cursor-pointer list-none items-center justify-between px-3 py-2 font-mono text-xs font-600 uppercase tracking-[0.12em] text-ink-300 hover:text-orange-300">
           <span>Advanced toolchain (pre-filled)</span>
           <span className="text-ink-500 transition-transform group-open:rotate-90">
             ›
@@ -192,7 +190,7 @@ export default function AppSubmissionForm({
               maxLength={500}
               value={setupCommands}
               onChange={(e) => setSetupCommands(e.target.value)}
-              className="w-full rounded-md border border-ink-700 bg-ink-950 px-3 py-2 font-mono text-xs text-ink-50 placeholder:text-ink-400 focus-visible:border-orange-500 focus-visible:outline-none"
+              className="cp-input mono"
             />
           </Field>
 
@@ -203,7 +201,7 @@ export default function AppSubmissionForm({
               maxLength={500}
               value={testCommands}
               onChange={(e) => setTestCommands(e.target.value)}
-              className="w-full rounded-md border border-ink-700 bg-ink-950 px-3 py-2 font-mono text-xs text-ink-50 placeholder:text-ink-400 focus-visible:border-orange-500 focus-visible:outline-none"
+              className="cp-input mono"
             />
           </Field>
 
@@ -218,17 +216,15 @@ export default function AppSubmissionForm({
               rows={6}
               value={agentNotes}
               onChange={(e) => setAgentNotes(e.target.value)}
-              className="w-full rounded-md border border-ink-700 bg-ink-950 px-3 py-2 font-mono text-xs text-ink-50 placeholder:text-ink-400 focus-visible:border-orange-500 focus-visible:outline-none"
+              className="cp-textarea mono"
             />
-            <span className="self-end text-xs tabular-nums text-ink-400">
-              {agentNotes.length}/4000
-            </span>
+            <span className="cp-field-count">{agentNotes.length}/4000</span>
           </Field>
         </div>
       </details>
 
       {error && (
-        <div className="rounded-md border border-red-500/40 bg-red-500/[0.10] px-3 py-2 text-sm text-red-200">
+        <div className="cp-card tint-danger bar-danger pad-md text-sm text-red-200">
           <strong className="font-600 text-red-100">
             Couldn&apos;t connect app.
           </strong>{" "}
@@ -239,7 +235,7 @@ export default function AppSubmissionForm({
       <button
         type="submit"
         disabled={submitting || formInvalid}
-        className="self-start inline-flex items-center gap-2 rounded-lg bg-orange-500 px-5 py-2.5 text-sm font-600 text-ink-black shadow-[0_0_0_1px_rgba(255,124,43,.4),0_8px_24px_-8px_rgba(255,92,10,.6)] transition-all hover:bg-orange-400 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-orange-400 disabled:cursor-not-allowed disabled:opacity-60 disabled:hover:bg-orange-500"
+        className="cp-btn cp-btn-primary self-start"
       >
         {submitting ? "Connecting…" : "Connect app →"}
       </button>
@@ -257,16 +253,13 @@ interface FieldProps {
 
 function Field({ label, htmlFor, error, hint, children }: FieldProps) {
   return (
-    <div className="flex flex-col gap-1.5">
-      <label
-        htmlFor={htmlFor}
-        className="text-xs font-600 uppercase tracking-[0.12em] text-ink-300"
-      >
+    <div className="cp-field">
+      <label htmlFor={htmlFor} className="cp-field-label">
         {label}
       </label>
       {children}
-      {hint && !error && <span className="text-xs text-ink-400">{hint}</span>}
-      {error && <span className="text-xs text-red-300">{error}</span>}
+      {hint && !error && <span className="cp-field-hint">{hint}</span>}
+      {error && <span className="cp-field-error">{error}</span>}
     </div>
   );
 }

@@ -567,6 +567,11 @@ pre {
   display: flex;
   align-items: center;
   justify-content: space-between;
+  /* min-height matches the landing's natural height (driven by cp-nav-cta).
+   * Locking it here means /demo's chrome doesn't drift even if its right-side
+   * link is shorter than the landing's CTA — avoids a 0.5–1px brand jump
+   * when navigating between the two routes. */
+  min-height: 76px;
   padding: 18px 40px;
   border-bottom: 1px solid var(--border-soft);
   background: rgb(10 7 18 / 0.55);
@@ -1791,6 +1796,7 @@ pre {
     gap: 96px;
   }
   .cp-header {
+    min-height: 68px;
     padding: 14px 20px;
   }
   .cp-nav {
@@ -1822,5 +1828,152 @@ pre {
   }
   .cp-loopvis .arrows {
     display: none;
+  }
+}
+
+/* ── Tool-page primitives (used by /demo) ─────────────────────
+ * These extend the landing's cp-* vocabulary so /demo can
+ * compose its UI from the same design system without forcing
+ * the landing's marketing rhythm. */
+
+.cp-main.cp-main-tool {
+  max-width: 760px;
+  padding: 48px 24px 96px;
+  gap: 32px;
+}
+
+/* Form primitives ------------------------------------------------ */
+.cp-field {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+.cp-field-label {
+  font-family: var(--font-mono);
+  font-size: var(--fs-xs);
+  font-weight: var(--fw-semibold);
+  text-transform: uppercase;
+  letter-spacing: 0.14em;
+  color: var(--fg-3);
+}
+.cp-field-hint {
+  font-size: var(--fs-xs);
+  color: var(--fg-4);
+}
+.cp-field-error {
+  font-size: var(--fs-xs);
+  color: var(--red-300);
+}
+.cp-field-count {
+  align-self: flex-end;
+  font-family: var(--font-mono);
+  font-size: var(--fs-xs);
+  color: var(--fg-4);
+  font-variant-numeric: tabular-nums;
+}
+
+.cp-input,
+.cp-textarea,
+.cp-select {
+  width: 100%;
+  min-height: 40px;
+  padding: 8px 12px;
+  background: var(--ink-950);
+  color: var(--fg-1);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  font-family: var(--font-sans);
+  font-size: var(--fs-sm);
+  transition: border-color var(--dur-base) var(--ease),
+    box-shadow var(--dur-base) var(--ease);
+}
+.cp-input.mono,
+.cp-textarea.mono {
+  font-family: var(--font-mono);
+  font-size: var(--fs-xs);
+}
+.cp-textarea {
+  min-height: 96px;
+  resize: vertical;
+  line-height: var(--lh-relaxed);
+}
+.cp-input:focus-visible,
+.cp-textarea:focus-visible,
+.cp-select:focus-visible {
+  outline: none;
+  border-color: var(--orange-500);
+  box-shadow: 0 0 0 3px rgb(255 92 10 / 0.15);
+}
+.cp-input:disabled,
+.cp-textarea:disabled,
+.cp-select:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+/* Button modifiers ----------------------------------------------- */
+.cp-btn-sm {
+  padding: 6px 12px;
+  font-size: var(--fs-xs);
+  border-radius: var(--radius-md);
+}
+.cp-btn-ghost {
+  background: rgb(255 255 255 / 0.02);
+  color: var(--fg-2);
+  border: 1px solid var(--border);
+}
+.cp-btn-ghost:hover {
+  background: var(--bg-elev);
+  color: var(--fg-1);
+  border-color: var(--border-strong);
+}
+
+/* Card variants -------------------------------------------------- */
+.cp-card.tint-success {
+  border-color: rgb(125 220 26 / 0.30);
+  background: linear-gradient(180deg, rgb(125 220 26 / 0.04), var(--bg-raised) 60%);
+}
+.cp-card.tint-agent {
+  border-color: rgb(138 82 255 / 0.30);
+  background: linear-gradient(180deg, rgb(138 82 255 / 0.04), var(--bg-raised) 60%);
+}
+.cp-card.tint-danger {
+  border-color: rgb(255 92 82 / 0.35);
+  background: linear-gradient(180deg, rgb(255 92 82 / 0.05), var(--bg-raised) 60%);
+}
+.cp-card.bar-success {
+  border-left: 4px solid var(--lime-500);
+}
+.cp-card.bar-agent {
+  border-left: 4px solid var(--violet-500);
+}
+.cp-card.bar-danger {
+  border-left: 4px solid var(--red-500);
+}
+.cp-card.pad-md {
+  padding: var(--space-5);
+}
+.cp-card.pad-lg {
+  padding: var(--space-6);
+}
+
+/* Log row (real SSE event stream in /demo) ----------------------- */
+.cp-log-row {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--space-3);
+  padding: 8px 12px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  font-family: var(--font-mono);
+  font-size: var(--fs-xs);
+  background: var(--bg-raised);
+  transition: background var(--dur-base) var(--ease);
+}
+
+@media (max-width: 600px) {
+  .cp-main.cp-main-tool {
+    padding: 32px 16px 72px;
+    gap: 24px;
   }
 }

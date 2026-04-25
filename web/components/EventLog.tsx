@@ -27,14 +27,12 @@ interface EventLogProps {
 export default function EventLog({ cards, startTs }: EventLogProps) {
   if (cards.length === 0) {
     return (
-      <div className="font-mono text-sm text-ink-300">
-        Waiting for first event…
-      </div>
+      <div className="cp-mono cp-hint">Waiting for first event…</div>
     );
   }
 
   return (
-    <ol className="flex flex-col gap-1.5 font-mono text-sm">
+    <ol className="flex flex-col gap-1.5">
       {cards.map((card, idx) => (
         <CardRow
           key={`${card.kind}-${card.ts}-${idx}`}
@@ -56,9 +54,7 @@ function CardRow({ card, startTs }: { card: Card; startTs: number | null }) {
   const isPrOpened = card.kind === "pr_opened";
 
   return (
-    <li
-      className={`flex items-start gap-3 rounded-md border px-3 py-2 transition-colors ${visual.container}`}
-    >
+    <li className={`cp-log-row ${visual.container}`}>
       <Icon
         className={`mt-0.5 h-4 w-4 shrink-0 ${visual.icon_color}`}
         aria-hidden="true"
@@ -68,22 +64,20 @@ function CardRow({ card, startTs }: { card: Card; startTs: number | null }) {
           <span className={`truncate font-500 ${visual.label_color}`}>
             {card.label}
           </span>
-          <span className="shrink-0 text-xs tabular-nums text-ink-300">
-            {offset}
-          </span>
+          <span className="shrink-0 tabular-nums text-ink-300">{offset}</span>
         </div>
 
         {isThought && (
           <button
             type="button"
             onClick={() => setExpanded((v) => !v)}
-            className="self-start text-xs text-violet-300 underline-offset-2 hover:underline"
+            className="cp-btn cp-btn-sm cp-btn-ghost self-start"
           >
             {expanded ? "Hide" : "Show"} reasoning
           </button>
         )}
         {isThought && expanded && (
-          <pre className="whitespace-pre-wrap break-words rounded border border-ink-700 bg-ink-900/60 p-2 text-xs text-ink-100">
+          <pre className="whitespace-pre-wrap break-words rounded border border-ink-700 bg-ink-900/60 p-2 text-ink-100">
             {card.text}
           </pre>
         )}
@@ -93,7 +87,7 @@ function CardRow({ card, startTs }: { card: Card; startTs: number | null }) {
             href={card.pr_url}
             target="_blank"
             rel="noopener noreferrer"
-            className="self-start text-xs text-lime-300 underline-offset-2 hover:underline"
+            className="self-start text-lime-300 underline-offset-2 hover:underline"
           >
             {isComplete
               ? `View PR: ${card.pr_url}`

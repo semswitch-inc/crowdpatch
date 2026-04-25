@@ -12,13 +12,13 @@ export default function ConnectedAppCard({
   onEdit,
 }: ConnectedAppCardProps) {
   return (
-    <article className="flex w-full flex-col gap-3 rounded-xl border border-lime-500/30 bg-lime-500/[0.06] px-5 py-4">
+    <article className="cp-card tint-success pad-md flex w-full flex-col gap-3">
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div className="flex min-w-0 flex-col gap-1">
-          <span className="text-xs font-600 uppercase tracking-[0.12em] text-lime-200">
+          <span className="font-mono text-xs font-600 uppercase tracking-[0.14em] text-lime-200">
             App connected
           </span>
-          <h3 className="text-base font-600 text-ink-50">{app.display_name}</h3>
+          <h3 className="cp-h3">{app.display_name}</h3>
           <a
             href={app.github_repo_url}
             target="_blank"
@@ -39,7 +39,7 @@ export default function ConnectedAppCard({
           <button
             type="button"
             onClick={onEdit}
-            className="text-xs text-orange-400 underline-offset-2 hover:underline"
+            className="cp-btn cp-btn-sm cp-btn-ghost"
           >
             Edit and connect a different app
           </button>

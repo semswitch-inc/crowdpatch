@@ -169,19 +169,14 @@ export default function Demo() {
           href={REPO_URL}
           target="_blank"
           rel="noopener noreferrer"
-          // inline-flex + min-h-10 keeps the link box 40px tall so the
-          // header inner-height matches the landing (whose right side is a
-          // ~40px cp-nav-cta button). Without this, the cp-header bottom
-          // border sits ~12px higher than the landing and the brand text
-          // appears to jump when nav-ing between the two pages.
-          className="inline-flex items-center min-h-10 text-sm font-500 text-ink-300 underline-offset-4 transition-colors hover:text-orange-400 hover:underline"
+          className="inline-flex items-center text-sm font-500 text-ink-300 underline-offset-4 transition-colors hover:text-orange-400 hover:underline"
         >
           View on GitHub →
         </Link>
       </header>
 
       {/* ── Main ───────────────────────────────────────────── */}
-      <main className="flex w-full max-w-3xl flex-1 flex-col gap-12 self-center px-8 py-24 sm:items-start sm:px-16">
+      <main className="cp-main cp-main-tool flex-1">
         <section className="flex flex-col items-start gap-5 text-left">
           {/* Eyebrow tag — vibrant, not whisper-grey */}
           <span className="inline-flex items-center gap-2 rounded-full border border-orange-500/40 bg-orange-500/10 px-3 py-1 font-mono text-[11px] font-600 uppercase tracking-[0.18em] text-orange-300">

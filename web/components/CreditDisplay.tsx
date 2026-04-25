@@ -121,13 +121,13 @@ export default function CreditDisplay({
           void handleClaim();
         }}
         disabled={claiming || !apiBase}
-        className="inline-flex items-center gap-1 rounded-md border border-ink-700 bg-ink-900/60 px-3 py-1 text-xs font-600 text-ink-100 transition-colors hover:border-lime-500/50 hover:bg-ink-800 hover:text-lime-200 disabled:cursor-not-allowed disabled:opacity-60 disabled:hover:border-ink-700 disabled:hover:bg-ink-900/60 disabled:hover:text-ink-100"
+        className="cp-btn cp-btn-sm cp-btn-ghost hover:!border-lime-500/50 hover:!text-lime-200"
       >
         {claiming ? "Claiming…" : "Claim free credits"}
       </button>
 
       {claimMsg && (
-        <span className="text-xs text-ink-300" aria-live="polite">
+        <span className="font-mono text-xs text-ink-300" aria-live="polite">
           {claimMsg}
         </span>
       )}
