@@ -21,7 +21,7 @@ workers_dev = true
 #   (b) override per-deploy via `wrangler secret put ENVIRONMENT` (then enter
 #       "staging" or "production" at the prompt) before `wrangler deploy`.
 [vars]
-ENVIRONMENT = "development"
+ENVIRONMENT = "production"
 GITHUB_DEMO_ORG = "semswitch-inc"
 DEMO_REPO_URL = "https://github.com/semswitch-inc/jsdiff-demo"
 
@@ -45,7 +45,7 @@ new_sqlite_classes = ["AgentSessionDO"]
 [[d1_databases]]
 binding = "DB"
 database_name = "crowdpatch-db"
-database_id = "REPLACE_ME_AFTER_wrangler_d1_create"
+database_id = "cd4f1454-f2d8-4d73-bda3-c6e24d139e91"
 migrations_dir = "migrations"
 
 # -- R2 --

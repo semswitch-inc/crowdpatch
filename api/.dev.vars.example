@@ -2,6 +2,12 @@
 # .dev.vars is gitignored — never commit real secrets.
 # Restart `wrangler dev` after changes.
 
+# Overrides wrangler.toml [vars] for local dev only — enables /debug/anthropic-agents.
+# The deployed Worker uses ENVIRONMENT="production" from wrangler.toml (safe-by-default
+# disable of the debug route). Local wrangler dev reads .dev.vars after [vars], so this
+# line restores development behavior locally without touching the toml.
+ENVIRONMENT=development
+
 # Anthropic API key — https://console.anthropic.com/settings/keys
 ANTHROPIC_API_KEY=sk-ant-api03-REPLACE_ME
 
