@@ -48,6 +48,12 @@ export class AgentSessionDO extends DurableObject<Bindings> {
   private subscribers = new Set<ReadableStreamDefaultController<Uint8Array>>();
   private heartbeat: number | null = null;
   private encoder = new TextEncoder();
+  // Liveness flag for the alarm() handler. Re-armed every ~30s while runAgent
+  // is in flight to prevent Cloudflare from hibernating the DO before the
+  // upstream Anthropic stream finishes draining + the finally block can run
+  // (writeRunArtifactsBestEffort, totals flush, archive). On hibernation this
+  // flag resets to false on wake — alarm() then no-ops, no orphan-alarm storm.
+  private isAgentRunning = false;
 
   constructor(ctx: DurableObjectState, env: Bindings) {
     super(ctx, env);
@@ -65,6 +71,17 @@ export class AgentSessionDO extends DurableObject<Bindings> {
         value TEXT NOT NULL
       );
     `);
+  }
+
+  // Cloudflare-invoked liveness handler. While runAgent is in flight, re-arms
+  // an alarm 30s out — pending alarms hold the DO awake and prevent the
+  // upstream stream's Promise.race from being silently abandoned to
+  // hibernation. Once runAgent's finally clears the flag + deletes the alarm,
+  // any in-flight alarm wake just no-ops here.
+  async alarm(): Promise<void> {
+    if (this.isAgentRunning) {
+      await this.ctx.storage.setAlarm(Date.now() + 30000);
+    }
   }
 
   override async fetch(request: Request): Promise<Response> {
@@ -213,6 +230,15 @@ export class AgentSessionDO extends DurableObject<Bindings> {
   }
 
   private async runAgent(payload: StartPayload): Promise<void> {
+    // Liveness: arm an alarm 10s out and flip the running flag BEFORE any
+    // long-await downstream of this point. The alarm() handler re-arms every
+    // 30s while isAgentRunning stays true — this keeps the DO awake across
+    // the multi-minute Anthropic stream, eliminating the hibernate-mid-run
+    // failure mode where setTimeout(SESSION_TIMEOUT_MS) never fires and the
+    // finally block (artifacts, totals, archive) never runs.
+    this.isAgentRunning = true;
+    await this.ctx.storage.setAlarm(Date.now() + 10000);
+
     // started_at was set at POST insert time (Step 3 §6); just bump status.
     await updateFixJob(this.env.DB, payload.fix_job_id, { status: "running" });
 
@@ -583,6 +609,17 @@ export class AgentSessionDO extends DurableObject<Bindings> {
       // totals, first_*) from D1. Best-effort: never throws; the original
       // terminal outcome has long since been broadcast and persisted.
       await writeRunArtifactsBestEffort(this.env, payload.fix_job_id);
+
+      // Liveness teardown — clear the flag FIRST so any alarm that fires
+      // between deleteAlarm() and the next setAlarm window no-ops, then drop
+      // the pending alarm. Failure here is non-fatal: alarm() will see
+      // isAgentRunning=false on next wake and naturally stop re-arming.
+      this.isAgentRunning = false;
+      try {
+        await this.ctx.storage.deleteAlarm();
+      } catch (alarmErr) {
+        console.warn("[agent-session] deleteAlarm failed", alarmErr);
+      }
     }
   }
 }

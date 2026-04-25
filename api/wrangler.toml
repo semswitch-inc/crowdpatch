@@ -68,6 +68,16 @@ bucket_name = "crowdpatch-artifacts"
 # max_batch_size = 10
 # max_batch_timeout = 5
 
+# -- Limits --
+# Default Worker CPU per request is 30s. The DO's runAgent invocation can
+# spend > 30s of CPU on large Anthropic tool-call response payloads (parsing,
+# event mapping, persisting events to SQLite). Bump to 5min so a single big
+# tool reply doesn't crash the DO mid-stream and orphan the fix-job in
+# 'running'. Requires Workers Paid (we're on it).
+
+[limits]
+cpu_ms = 300000
+
 # -- Observability --
 # Enables structured logs in the Cloudflare dashboard and `wrangler tail`.
 
