@@ -16,6 +16,7 @@ import { zValidator } from "@hono/zod-validator";
 import type { Bindings } from "../index";
 import { createFixJob, getApp, getBugReport } from "../lib/db";
 import { parseRepoUrl } from "../lib/github";
+import { slugify } from "../lib/text";
 
 const fixJobs = new Hono<{ Bindings: Bindings }>();
 
@@ -93,10 +94,12 @@ fixJobs.post("/fix-jobs", zValidator("json", PostBody), async (c) => {
     );
   }
 
-  // 4. Generate IDs
+  // 4. Generate IDs. Branch name is derived from the bug title so each demo
+  // (jsdiff word-diff, jsdiff patch-parse, judge's own repo, …) produces a
+  // self-explanatory branch instead of the hardcoded jsdiff-only suffix.
   const fixJobId = ulid();
   const shortUlid = fixJobId.slice(-8).toLowerCase();
-  const branchName = `fix/word-diff-whitespace-${shortUlid}`;
+  const branchName = `fix/${slugify(bugReport.title).slice(0, 30)}-${shortUlid}`;
 
   // 5. INSERT fix_jobs row.
   // status='pending' — the DO bumps it to 'running' once it actually begins.

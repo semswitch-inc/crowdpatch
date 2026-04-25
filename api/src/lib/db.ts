@@ -22,6 +22,15 @@ export interface AppRow {
   owner_user_id: string;
   github_repo_url: string;
   display_name: string;
+  // Per-repo agent toolchain context (Day 3 — see migration 0003).
+  // default_branch: NOT NULL DEFAULT 'main'; jsdiff-demo uses 'master'.
+  // setup_commands / test_commands / agent_notes: nullable; agent prompt
+  // falls back to 'npm install' / 'npm test' if the structured commands
+  // are null, and only includes the agent_notes block when populated.
+  default_branch: string;
+  setup_commands: string | null;
+  test_commands: string | null;
+  agent_notes: string | null;
   created_at: number;
 }
 
@@ -80,7 +89,10 @@ export async function getApp(
 ): Promise<AppRow | null> {
   const row = await db
     .prepare(
-      "SELECT id, owner_user_id, github_repo_url, display_name, created_at FROM apps WHERE id = ?",
+      `SELECT id, owner_user_id, github_repo_url, display_name,
+              default_branch, setup_commands, test_commands, agent_notes,
+              created_at
+         FROM apps WHERE id = ?`,
     )
     .bind(id)
     .first<AppRow>();

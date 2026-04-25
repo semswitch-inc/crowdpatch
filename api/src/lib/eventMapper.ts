@@ -59,15 +59,22 @@ type AnyEvent = {
   [key: string]: unknown;
 };
 
+// Read a string field defensively from an unknown bag — returns "" rather
+// than letting Object stringification leak "[object Object]" into the UI.
+function strField(bag: Record<string, unknown>, key: string): string {
+  const v = bag[key];
+  return typeof v === "string" ? v : "";
+}
+
 export function mapAgentEvent(event: unknown): Card | null {
   const ts = Date.now();
   const e = event as AnyEvent;
-  if (!e || typeof e.type !== "string") return null;
+  if (typeof e.type !== "string") return null;
 
   if (e.type === "agent.tool_use") {
-    const input = (e.input ?? {}) as Record<string, unknown>;
+    const input = e.input ?? {};
     if (e.name === "bash") {
-      const cmd = String(input.command ?? "");
+      const cmd = strField(input, "command");
       if (/yarn\s+install|npm\s+install|corepack/.test(cmd)) {
         return { kind: "install", label: "Installing dependencies", ts };
       }
@@ -91,8 +98,8 @@ export function mapAgentEvent(event: unknown): Card | null {
       return null;
     }
     if (e.name === "str_replace_editor" || e.name === "text_editor") {
-      const path = String(input.path ?? "");
-      const cmd = String(input.command ?? "");
+      const path = strField(input, "path");
+      const cmd = strField(input, "command");
       if (cmd === "view") {
         return { kind: "read", label: `Reading ${path}`, path, ts };
       }
@@ -107,7 +114,7 @@ export function mapAgentEvent(event: unknown): Card | null {
   if (e.type === "agent.message") {
     const blocks = Array.isArray(e.content) ? e.content : [];
     const raw = blocks
-      .map((b) => (typeof b?.text === "string" ? b.text : ""))
+      .map((b) => (typeof b.text === "string" ? b.text : ""))
       .join("");
     if (!raw.trim()) return null;
     // ALWAYS redact secrets before persisting/broadcasting agent text.

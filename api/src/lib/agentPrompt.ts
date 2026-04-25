@@ -1,8 +1,14 @@
 // Builds the user.message text the agent receives at the start of a fix job.
 //
-// Kept in its own module so the prompt can be evolved without touching the
-// route handler. When this changes meaningfully, update
-// .agents/plans/sequential-soaring-plum.md §2.7 to keep the spec in sync.
+// Day 3: this used to hardcode jsdiff-specific toolchain facts (master branch,
+// yarn 4.12.0 with corepack, libesm/ rebuild rules, environmental fallback).
+// Those facts now live in per-app seed data via migration 0003 — see
+// `apps.default_branch / setup_commands / test_commands / agent_notes`. This
+// template interpolates the structured fields and drops `agent_notes` in
+// verbatim for repo idiosyncrasies that don't fit elsewhere.
+//
+// For repos without populated commands (e.g. a fresh self-host), falls back
+// to npm install / npm test defaults so the prompt still parses.
 
 import type { AppRow, BugReportRow } from "./db";
 
@@ -17,6 +23,12 @@ export function buildAgentPrompt({
   app,
   branch_name,
 }: BuildAgentPromptParams): string {
+  const setup = app.setup_commands ?? "npm install";
+  const test = app.test_commands ?? "npm test";
+  const notesBlock = app.agent_notes
+    ? `\nRepo-specific notes:\n${app.agent_notes}\n`
+    : "";
+
   return `Bug report from user "${bugReport.reporter_name}" against ${app.github_repo_url}:
 
   Title: ${bugReport.title}
@@ -24,32 +36,17 @@ export function buildAgentPrompt({
 
   ${bugReport.description}
 
-The repository is checked out at /workspace/repo. The default branch is \`master\`
-(NOT \`main\`) — jsdiff is an old project that never migrated.
-
-Toolchain facts about this repo:
-- packageManager is "yarn@4.12.0". Use Corepack + Yarn — NOT npm.
-- The test files in test/ import from libesm/ (compiled output), NOT from src/.
-  Any source edit must be followed by a rebuild before tests can observe it.
-  \`yarn test\` runs \`yarn build && mocha\`, so it rebuilds libesm/ automatically.
-
+The repository is checked out at /workspace/repo. The default branch is \`${app.default_branch}\`.
+${notesBlock}
 Your task:
 1. cd /workspace/repo
-2. One-time setup:
-     corepack enable
-     yarn install --immutable
-3. Run the test suite: \`yarn test\`. Note which tests fail and why.
+2. One-time setup, run:
+     ${setup}
+3. Run the test suite: \`${test}\`. Note which tests fail and why.
 4. Read the implicated source files. Identify the smallest fix.
-5. Create a new branch off master named exactly: ${branch_name}
-6. Apply the fix to src/.
-7. Re-verify with \`yarn test\`. ALL tests must pass before proceeding.
-   Fallback: if \`yarn test\` fails on issues clearly unrelated to your fix
-   (e.g. nyc coverage thresholds, runtime.js / babel-register / require-of-ESM
-   errors), fall back to:
-     yarn build && npx mocha test/diff/word.js
-   \`yarn build\` regenerates libesm/ from src/; bypassing \`--require ./runtime\`
-   skips coverage but still runs the failing word-diff tests. Use the fallback
-   ONLY if the upstream failure is clearly environmental, not your code.
+5. Create a new branch off ${app.default_branch} named exactly: ${branch_name}
+6. Apply the fix.
+7. Re-verify with \`${test}\`. ALL tests must pass before proceeding (subject to any environmental fallback noted above).
 8. Commit with a clear message: "fix: <one-line summary>"
 9. Push the branch: \`git push -u origin ${branch_name}\`
 10. Output "AGENT_DONE: ${branch_name}" on its own line.

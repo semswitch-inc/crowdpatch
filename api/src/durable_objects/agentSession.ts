@@ -66,7 +66,7 @@ export class AgentSessionDO extends DurableObject<Bindings> {
   override async fetch(request: Request): Promise<Response> {
     const url = new URL(request.url);
     if (request.method === "POST" && url.pathname === "/start") {
-      const payload = (await request.json()) as StartPayload;
+      const payload = await request.json<StartPayload>();
       return this.handleStart(payload);
     }
     if (request.method === "GET" && url.pathname === "/subscribe") {
@@ -75,7 +75,7 @@ export class AgentSessionDO extends DurableObject<Bindings> {
     return new Response("not found", { status: 404 });
   }
 
-  private async handleStart(payload: StartPayload): Promise<Response> {
+  private handleStart(payload: StartPayload): Response {
     // Idempotent against double-start
     const started = this.ctx.storage.sql
       .exec("SELECT value FROM state WHERE key='started'")
@@ -104,9 +104,10 @@ export class AgentSessionDO extends DurableObject<Bindings> {
       start: (controller) => {
         // Replay history first
         const rows = this.ctx.storage.sql
-          .exec<{ kind: string; payload_json: string }>(
-            "SELECT kind, payload_json FROM events ORDER BY seq ASC",
-          )
+          .exec<{
+            kind: string;
+            payload_json: string;
+          }>("SELECT kind, payload_json FROM events ORDER BY seq ASC")
           .toArray();
         for (const row of rows) {
           controller.enqueue(
@@ -182,7 +183,7 @@ export class AgentSessionDO extends DurableObject<Bindings> {
       for (const d of dead) this.subscribers.delete(d);
       // Stop heartbeat once no subscribers remain — DO can hibernate freely.
       if (this.subscribers.size === 0 && this.heartbeat !== null) {
-        clearInterval(this.heartbeat as unknown as number);
+        clearInterval(this.heartbeat);
         this.heartbeat = null;
       }
     }, HEARTBEAT_INTERVAL_MS) as unknown as number;
@@ -202,7 +203,7 @@ export class AgentSessionDO extends DurableObject<Bindings> {
     }
     this.subscribers.clear();
     if (this.heartbeat !== null) {
-      clearInterval(this.heartbeat as unknown as number);
+      clearInterval(this.heartbeat);
       this.heartbeat = null;
     }
   }
@@ -303,7 +304,7 @@ export class AgentSessionDO extends DurableObject<Bindings> {
             error?: { message?: string };
           };
           if (e.type === "session.status_idle") {
-            const stopType = e.stop_reason?.type;
+            const stopType = e.stop_reason?.type ?? "unknown";
             if (stopType === "end_turn") return;
             throw new Error(`unexpected stop_reason: ${stopType}`);
           } else if (e.type === "session.status_terminated") {
@@ -341,12 +342,14 @@ export class AgentSessionDO extends DurableObject<Bindings> {
         return;
       }
 
-      // Open PR
+      // Open PR. Base branch comes from the per-app `default_branch` column
+      // (Day 3 — see migration 0003) so self-host repos using `main` don't
+      // 422 against a hardcoded `master`.
       const pr = await github.openPr({
         owner: repoCoords.owner,
         repo: repoCoords.repo,
         head: payload.branch_name,
-        base: "master",
+        base: payload.app.default_branch,
         title: `[CrowdPatch] Fix: ${payload.bug_report.title}`,
         body: buildPrBody({
           bugReportId: payload.bug_report.id,
@@ -370,7 +373,7 @@ export class AgentSessionDO extends DurableObject<Bindings> {
 
       this.persistEvent({
         kind: "pr_opened",
-        label: `PR #${pr.number} opened`,
+        label: `PR #${String(pr.number)} opened`,
         pr_url: pr.html_url,
         pr_number: pr.number,
         ts: Date.now(),

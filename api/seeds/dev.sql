@@ -29,11 +29,30 @@ INSERT OR REPLACE INTO users (id, github_login, display_name, credits_balance) V
 -- Apps
 -- ────────────────────────────────────────────────────────────────────────
 
-INSERT OR REPLACE INTO apps (id, owner_user_id, github_repo_url, display_name) VALUES
+-- Per-repo toolchain context populated for app_jsdiff_demo (Day 3 — see
+-- migration 0003). default_branch is also used as the PR base in
+-- durable_objects/agentSession.ts. agent_notes carries the load-bearing
+-- jsdiff-specific facts (compiled libesm output, mandatory rebuild,
+-- environmental fallback) that don't fit the structured commands fields.
+INSERT OR REPLACE INTO apps (
+  id, owner_user_id, github_repo_url, display_name,
+  default_branch, setup_commands, test_commands, agent_notes
+) VALUES
   ('app_jsdiff_demo',
    'user_uploader_hassan',
    'https://github.com/semswitch-inc/jsdiff-demo',
-   'jsdiff (demo canvas)');
+   'jsdiff (demo canvas)',
+   'master',
+   'corepack enable && yarn install --immutable',
+   'yarn test',
+   'packageManager is yarn@4.12.0 — use Corepack + Yarn, NOT npm.
+
+Tests in test/ import from libesm/ (compiled output), NOT from src/. Any source edit must be followed by a rebuild before tests can observe it. `yarn test` runs `yarn build && mocha`, so it auto-rebuilds.
+
+Fallback if `yarn test` fails on issues clearly unrelated to your fix (e.g. nyc coverage thresholds, runtime.js / babel-register / require-of-ESM errors), fall back to:
+  yarn build && npx mocha test/diff/word.js
+
+`yarn build` regenerates libesm/ from src/; bypassing `--require ./runtime` skips coverage but still runs the failing tests. Use the fallback ONLY when the upstream failure is clearly environmental, not your code.');
 
 -- ────────────────────────────────────────────────────────────────────────
 -- Bug reports — tied to the planted bugs in jsdiff-demo
@@ -48,11 +67,15 @@ INSERT OR REPLACE INTO bug_reports (id, app_id, reporter_name, title, descriptio
    'diffWords() returns <del>/<ins> change objects when two strings differ only in the whitespace between word tokens (e.g. multiple spaces vs a newline+tab). Affects src/diff/word.ts. Repro: diffWords(''New    Value'', ''New \n \t Value'') returns add+remove changes; expected output is a single unchanged change object. Failing mocha test: "should ignore whitespace changes between tokens that aren''t added or deleted" in test/diff/word.js, which asserts convertChangesToXML(diffResult) equals ''New \n \t Value''. Other failing tests in the same file include "should ignore whitespace".',
    'medium',
    'open'),
+  -- bug_002 is a template / example row — the bug is described but not
+  -- planted in semswitch-inc/jsdiff-demo. The agent run for ?bug=bug_002
+  -- demonstrates the URL-routing flow but won't produce a real PR. To
+  -- demo a working second bug, plant a real defect and update this row.
   ('bug_002',
    'app_jsdiff_demo',
    'Bob (tester)',
-   'patch parser drops the final hunk when no trailing newline',
-   'parsePatch() silently truncates the last hunk if the input string does not end with a newline. Affects src/patch/parse.ts. Repro: feed any well-formed patch with no trailing newline; observe the missing hunk in the output.',
+   '[EXAMPLE — not planted] patch parser would drop the final hunk when no trailing newline',
+   'EXAMPLE bug template. Describes a hypothetical regression in parsePatch() where the last hunk is dropped if the input has no trailing newline. The bug is NOT actually planted in semswitch-inc/jsdiff-demo (src/patch/parse.ts matches upstream). Use this row to verify the ?bug=<id> URL-routing flow, OR replace it with a real bug for a fuller demo.',
    'high',
    'open');
 
