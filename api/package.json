@@ -17,6 +17,7 @@
     "check": "npm run typecheck && npm run lint && npm run test && npm run format:check",
     "cf-typegen": "wrangler types",
     "bootstrap:anthropic": "tsx scripts/bootstrap-anthropic.ts",
+    "poc:vault-mcp": "tsx scripts/poc-vault-github-mcp.ts",
     "db:create": "wrangler d1 create crowdpatch-db",
     "db:migrate:local": "wrangler d1 migrations apply crowdpatch-db --local",
     "db:migrate:prod": "wrangler d1 migrations apply crowdpatch-db --remote",
