@@ -22,11 +22,11 @@ export default function Hero({ variant = "stream" }: HeroProps) {
         </span>
 
         <h1 className="cp-display">
-          Crowd finds it.
+          <span className="cp-hero-line">Crowd finds it.</span>
           <br />
-          <em>Claude fixes it.</em>
+          <em className="cp-hero-line">Claude fixes it.</em>
           <br />
-          <span className="lime">You ship it.</span>
+          <span className="lime cp-hero-line">You ship it.</span>
         </h1>
 
         <div className="cp-tagline-rail">
