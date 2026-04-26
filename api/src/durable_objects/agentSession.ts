@@ -561,8 +561,18 @@ export class AgentSessionDO extends DurableObject<Bindings> {
       // retrieve on an archived session (unverified; the catch wrapper makes
       // either ordering safe).
       if (sessionId !== null) {
+        // Lifecycle guard — defer archive when the upstream Anthropic
+        // session is still mid-stream. Our DO can exit early due to a
+        // dropped SSE pipe, DO hibernation, or a 10-min wall timeout
+        // while the agent is still legitimately running (composing the
+        // final commit, opening a sub-shell, etc). Archiving in that
+        // window risks killing in-flight work. Only archive when the
+        // SDK reports a terminal status. Anthropic's lifecycle reaper
+        // cleans up still-running sessions on its own once they idle.
+        let sessionStatus: string | null = null;
         try {
           const finalSession = await client.beta.sessions.retrieve(sessionId);
+          sessionStatus = (finalSession as { status?: string }).status ?? null;
           const totals = extractCumulativeUsage(finalSession.usage);
           await updateFixJob(this.env.DB, payload.fix_job_id, {
             total_input_tokens: totals.input,
@@ -578,10 +588,21 @@ export class AgentSessionDO extends DurableObject<Bindings> {
           );
         }
 
-        try {
-          await client.beta.sessions.archive(sessionId);
-        } catch (archiveErr) {
-          console.warn("[agent-session] archive failed", archiveErr);
+        // SDK Session.status is `'rescheduling' | 'running' | 'idle' |
+        // 'terminated'`. Archive only on terminal states. If retrieve
+        // failed (sessionStatus null), defer to be safe — better to
+        // leak a session for Anthropic to clean up than to kill the
+        // agent mid-push.
+        if (sessionStatus === "idle" || sessionStatus === "terminated") {
+          try {
+            await client.beta.sessions.archive(sessionId);
+          } catch (archiveErr) {
+            console.warn("[agent-session] archive failed", archiveErr);
+          }
+        } else {
+          console.warn(
+            `[agent-session] archive deferred — session ${sessionId} status=${sessionStatus ?? "unknown"} (still active); leaving for Anthropic lifecycle reaper`,
+          );
         }
       }
 
