@@ -45,6 +45,29 @@ Built for the Built With Opus 4.7 Hackathon - where autonomy stopped being a fea
 
 ---
 
+## Demo evidence
+
+Every run logged below is a real Pull Request CrowdPatch shipped against
+[`semswitch-inc/jsdiff-demo`](https://github.com/semswitch-inc/jsdiff-demo)
+during the hackathon — opened automatically by a Claude Managed Agent
+(Opus 4.6) running this same codebase against the same `bug_001`. No
+mocks, no fixtures.
+
+- **Submission-day headline (2026-04-26):** [PR #14 — `[CrowdPatch] Fix: word-diff treats whitespace-only differences between tokens as real changes`](https://github.com/semswitch-inc/jsdiff-demo/pull/14) — surgical 1-line fix to `src/diff/word.ts` (`left === right` → `left.trim() === right.trim()`)
+- **Auto-recovered run (2026-04-26):** [PR #13](https://github.com/semswitch-inc/jsdiff-demo/pull/13) — DO lost the upstream SSE pipe at +5min, the agent kept working and pushed the branch anyway, and `POST /api/fix-jobs/:id/recover` adopted the orphaned branch and opened the PR + recharged credits. Resilience receipt.
+- **Earlier reference runs (2026-04-25):** [PR #12](https://github.com/semswitch-inc/jsdiff-demo/pull/12) · [PR #8](https://github.com/semswitch-inc/jsdiff-demo/pull/8) (clean 4.5 min) · [#11](https://github.com/semswitch-inc/jsdiff-demo/pull/11) · [#10](https://github.com/semswitch-inc/jsdiff-demo/pull/10) · [#9](https://github.com/semswitch-inc/jsdiff-demo/pull/9)
+- **Full run history:** [`gh pr list --repo semswitch-inc/jsdiff-demo`](https://github.com/semswitch-inc/jsdiff-demo/pulls?q=is%3Apr+%5BCrowdPatch%5D)
+
+The repeated whitespace-bug fixes across runs are intentional — each
+demo replays the same `bug_001` to demonstrate that the agent reaches
+the same correct fix every time. PRs #10 and #11 are deploy-smoke
+runs against a different planted bug, proving the pipeline is
+repo-agnostic.
+
+Live demo: **[crowdpatch.dev/demo](https://crowdpatch.dev/demo)** · access code shared with judges via the submission form.
+
+---
+
 ## Run it yourself in 10 minutes
 
 CrowdPatch is open source (MIT). Anyone can self-host it against their own
