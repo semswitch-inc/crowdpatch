@@ -47,6 +47,7 @@ export default function DemoAccessGate({ children }: DemoAccessGateProps) {
   return (
     <form
       onSubmit={handleSubmit}
+      autoComplete="off"
       className="cp-card pad-md flex w-full max-w-md flex-col gap-4"
     >
       <div className="flex flex-col gap-1">
@@ -64,8 +65,12 @@ export default function DemoAccessGate({ children }: DemoAccessGateProps) {
         </label>
         <input
           id="demo_access_code"
-          type="password"
-          autoComplete="off"
+          name="crowdpatch_demo_access_code"
+          type="text"
+          autoComplete="one-time-code"
+          autoCapitalize="none"
+          autoCorrect="off"
+          spellCheck={false}
           autoFocus
           required
           maxLength={120}
