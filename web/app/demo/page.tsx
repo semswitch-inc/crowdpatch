@@ -116,16 +116,18 @@ function HeroExperience() {
       <StepIndicator active={activeStep} />
 
       {phase === "connect" && (
-        <AppSubmissionForm
-          onConnected={(c) => {
-            setConnected(c);
-            setPhase("bug");
-          }}
-        />
+        <div className="cp-animate-in w-full">
+          <AppSubmissionForm
+            onConnected={(c) => {
+              setConnected(c);
+              setPhase("bug");
+            }}
+          />
+        </div>
       )}
 
       {phase === "bug" && connected && (
-        <>
+        <div className="cp-animate-in flex w-full flex-col gap-6">
           <ConnectedAppCard
             app={connected}
             onEdit={() => {
@@ -141,11 +143,11 @@ function HeroExperience() {
               setPhase("fix");
             }}
           />
-        </>
+        </div>
       )}
 
       {phase === "fix" && connected && submitted && (
-        <>
+        <div className="cp-animate-in flex w-full flex-col gap-6">
           <ConnectedAppCard app={connected} />
           <SubmittedBugCard
             bug={submitted}
@@ -164,7 +166,7 @@ function HeroExperience() {
               void refresh();
             }}
           />
-        </>
+        </div>
       )}
     </div>
   );

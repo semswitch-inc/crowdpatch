@@ -15,7 +15,7 @@ export default function Page() {
       </Suspense>
       <Header />
       <main className="cp-main">
-        <Hero variant="loop" />
+        <Hero variant="bounties" />
         <LoopSection />
         <LiveFixJob />
         <Features />
