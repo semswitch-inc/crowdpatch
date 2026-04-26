@@ -43,7 +43,7 @@ INSERT OR REPLACE INTO apps (
    'https://github.com/semswitch-inc/jsdiff-demo',
    'jsdiff (demo canvas)',
    'master',
-   'corepack enable && yarn install --immutable',
+   'git config --global commit.gpgsign false || true && corepack enable && yarn install --immutable',
    'yarn test',
    'packageManager is yarn@4.12.0 — use Corepack + Yarn, NOT npm.
 
@@ -52,7 +52,9 @@ Tests in test/ import from libesm/ (compiled output), NOT from src/. Any source 
 Fallback if `yarn test` fails on issues clearly unrelated to your fix (e.g. nyc coverage thresholds, runtime.js / babel-register / require-of-ESM errors), fall back to:
   yarn build && npx mocha test/diff/word.js
 
-`yarn build` regenerates libesm/ from src/; bypassing `--require ./runtime` skips coverage but still runs the failing tests. Use the fallback ONLY when the upstream failure is clearly environmental, not your code.');
+`yarn build` regenerates libesm/ from src/; bypassing `--require ./runtime` skips coverage but still runs the failing tests. Use the fallback ONLY when the upstream failure is clearly environmental, not your code.
+
+If `git commit` fails with `MCP server request failed ... 127.0.0.1:40739` (or any reference to `environment-runner code-sign`), the sandbox''s commit-signing service is down. Retry the commit once with the per-command bypass: `git -c commit.gpgsign=false commit -m "<your message>"`. If it still fails with the same signing error, this is an Anthropic sandbox infra outage in this instance — report the blocker, output `AGENT_DONE` is not appropriate, and stop. The user will retry on a fresh sandbox.');
 
 -- ────────────────────────────────────────────────────────────────────────
 -- Bug reports — tied to the planted bugs in jsdiff-demo
