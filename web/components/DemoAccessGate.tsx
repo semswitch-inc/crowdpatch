@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, type ReactNode } from "react";
+import { useState, type FormEvent, type ReactNode } from "react";
 
 import { useDemoCode } from "@/lib/useDemoCode";
 
@@ -36,7 +36,7 @@ export default function DemoAccessGate({ children }: DemoAccessGateProps) {
     return <>{children}</>;
   }
 
-  function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
+  function handleSubmit(e: FormEvent<HTMLFormElement>) {
     e.preventDefault();
     const trimmed = draft.trim();
     if (!trimmed) return;
@@ -47,11 +47,15 @@ export default function DemoAccessGate({ children }: DemoAccessGateProps) {
   return (
     <form
       onSubmit={handleSubmit}
+      aria-labelledby="demo_gate_title"
       autoComplete="off"
+      data-form-type="other"
       className="cp-card pad-md flex w-full max-w-md flex-col gap-4"
     >
       <div className="flex flex-col gap-1">
-        <h2 className="cp-h3">Enter the demo access code.</h2>
+        <h2 id="demo_gate_title" className="cp-h3">
+          Enter the demo access code.
+        </h2>
         <p className="cp-small">
           The live agent burns real Anthropic credits on every run, so the
           public demo is gated behind a shared code. If you&apos;re a judge or
@@ -60,22 +64,26 @@ export default function DemoAccessGate({ children }: DemoAccessGateProps) {
       </div>
 
       <div className="cp-field">
-        <label htmlFor="demo_access_code" className="cp-field-label">
+        <label htmlFor="cp_demo_gate" className="cp-field-label">
           Demo access code
         </label>
         <input
-          id="demo_access_code"
+          id="cp_demo_gate"
           name="crowdpatch_demo_access_code"
           type="text"
           autoComplete="one-time-code"
           autoCapitalize="none"
           autoCorrect="off"
+          inputMode="text"
           spellCheck={false}
-          autoFocus
           required
           maxLength={120}
           value={draft}
           onChange={(e) => setDraft(e.target.value)}
+          data-1p-ignore="true"
+          data-bwignore="true"
+          data-form-type="other"
+          data-lpignore="true"
           className="cp-input mono"
         />
         <span className="cp-field-hint">

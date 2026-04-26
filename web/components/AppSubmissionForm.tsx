@@ -31,6 +31,13 @@ Fallback if \`yarn test\` fails on issues clearly unrelated to your fix (e.g. ny
 // authoritative parseRepoUrl check; this is just early UX feedback.
 const REPO_URL_RE = /^https:\/\/github\.com\/[^/?#\s]+\/[^/?#\s]+?(\.git)?\/?$/;
 
+const PASSWORD_MANAGER_IGNORE_PROPS = {
+  "data-1p-ignore": "true",
+  "data-bwignore": "true",
+  "data-form-type": "other",
+  "data-lpignore": "true",
+} as const;
+
 interface AppSubmissionFormProps {
   onConnected: (app: ConnectedApp) => void;
 }
@@ -121,10 +128,15 @@ export default function AppSubmissionForm({
   return (
     <form
       onSubmit={handleSubmit}
+      aria-labelledby="app_submission_title"
+      autoComplete="off"
+      data-form-type="other"
       className="cp-card pad-md flex w-full flex-col gap-5"
     >
       <div className="flex flex-col gap-1">
-        <h2 className="cp-h3">Connect an app to CrowdPatch.</h2>
+        <h2 id="app_submission_title" className="cp-h3">
+          Connect an app to CrowdPatch.
+        </h2>
         <p className="cp-small">
           Start with the pre-filled jsdiff demo, or wire in your own repo. We
           save this so a tester can file bugs against it next.
@@ -137,8 +149,11 @@ export default function AppSubmissionForm({
         error={fieldErrors.display_name}
       >
         <input
+          {...PASSWORD_MANAGER_IGNORE_PROPS}
           id="display_name"
+          name="display_name"
           type="text"
+          autoComplete="organization"
           required
           maxLength={80}
           value={displayName}
@@ -154,8 +169,11 @@ export default function AppSubmissionForm({
         hint="Custom repos are experimental. The reliable demo uses the pre-filled jsdiff repo. To open a PR on another repo, the demo bot must have write access."
       >
         <input
+          {...PASSWORD_MANAGER_IGNORE_PROPS}
           id="github_repo_url"
+          name="github_repo_url"
           type="url"
+          autoComplete="url"
           required
           maxLength={255}
           value={repoUrl}
@@ -171,8 +189,11 @@ export default function AppSubmissionForm({
         hint="Used as the PR base branch."
       >
         <input
+          {...PASSWORD_MANAGER_IGNORE_PROPS}
           id="default_branch"
+          name="default_branch"
           type="text"
+          autoComplete="off"
           required
           maxLength={80}
           value={defaultBranch}
@@ -191,8 +212,11 @@ export default function AppSubmissionForm({
         <div className="flex flex-col gap-4 border-t border-ink-700 p-4">
           <Field label="Setup command" htmlFor="setup_commands">
             <input
+              {...PASSWORD_MANAGER_IGNORE_PROPS}
               id="setup_commands"
+              name="setup_commands"
               type="text"
+              autoComplete="off"
               maxLength={500}
               value={setupCommands}
               onChange={(e) => setSetupCommands(e.target.value)}
@@ -202,8 +226,11 @@ export default function AppSubmissionForm({
 
           <Field label="Test command" htmlFor="test_commands">
             <input
+              {...PASSWORD_MANAGER_IGNORE_PROPS}
               id="test_commands"
+              name="test_commands"
               type="text"
+              autoComplete="off"
               maxLength={500}
               value={testCommands}
               onChange={(e) => setTestCommands(e.target.value)}
@@ -217,7 +244,10 @@ export default function AppSubmissionForm({
             hint="Repo idiosyncrasies that don't fit the structured commands. Inlined verbatim into the agent prompt."
           >
             <textarea
+              {...PASSWORD_MANAGER_IGNORE_PROPS}
               id="agent_notes"
+              name="agent_notes"
+              autoComplete="off"
               maxLength={4000}
               rows={6}
               value={agentNotes}

@@ -21,6 +21,13 @@ const BUG_001_DEFAULTS = {
 
 type FieldErrors = Partial<Record<keyof typeof BUG_001_DEFAULTS, string>>;
 
+const PASSWORD_MANAGER_IGNORE_PROPS = {
+  "data-1p-ignore": "true",
+  "data-bwignore": "true",
+  "data-form-type": "other",
+  "data-lpignore": "true",
+} as const;
+
 interface BugReportFormProps {
   // The app the bug is being filed against. Required (non-nullable) so the
   // form cannot accidentally fall back to the server's default app_id —
@@ -103,10 +110,15 @@ export default function BugReportForm({
   return (
     <form
       onSubmit={handleSubmit}
+      aria-labelledby="bug_report_title"
+      autoComplete="off"
+      data-form-type="other"
       className="cp-card pad-md flex w-full flex-col gap-5"
     >
       <div className="flex flex-col gap-1">
-        <h2 className="cp-h3">Describe the bug for Claude.</h2>
+        <h2 id="bug_report_title" className="cp-h3">
+          Describe the bug for Claude.
+        </h2>
         <p className="cp-small">
           Start with the demo bug, or edit it before patching. Your text lands
           in the Managed Agent&apos;s prompt and the GitHub PR.
@@ -119,8 +131,11 @@ export default function BugReportForm({
         error={fieldErrors.reporter_name}
       >
         <input
+          {...PASSWORD_MANAGER_IGNORE_PROPS}
           id="reporter_name"
+          name="reporter_name"
           type="text"
+          autoComplete="name"
           required
           maxLength={80}
           value={reporterName}
@@ -131,8 +146,11 @@ export default function BugReportForm({
 
       <Field label="Title" htmlFor="title" error={fieldErrors.title}>
         <input
+          {...PASSWORD_MANAGER_IGNORE_PROPS}
           id="title"
+          name="bug_title"
           type="text"
+          autoComplete="off"
           required
           maxLength={120}
           value={title}
@@ -148,7 +166,10 @@ export default function BugReportForm({
         hint="What's broken, where, and how to reproduce it. Up to 2000 chars."
       >
         <textarea
+          {...PASSWORD_MANAGER_IGNORE_PROPS}
           id="description"
+          name="bug_description"
+          autoComplete="off"
           required
           maxLength={2000}
           rows={8}
@@ -161,7 +182,10 @@ export default function BugReportForm({
 
       <Field label="Severity" htmlFor="severity">
         <select
+          {...PASSWORD_MANAGER_IGNORE_PROPS}
           id="severity"
+          name="bug_severity"
+          autoComplete="off"
           value={severity}
           onChange={(e) =>
             setSeverity(e.target.value as "low" | "medium" | "high")

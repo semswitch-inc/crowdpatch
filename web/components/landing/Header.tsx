@@ -25,11 +25,11 @@ export default function Header() {
         <a href={REPO_URL} target="_blank" rel="noreferrer">
           GitHub
         </a>
-        <Link href="/demo" className="cp-nav-demo">
+        <Link href="/demo" prefetch={false} className="cp-nav-demo">
           <Play aria-hidden />
           Demo
         </Link>
-        <Link href="/demo" className="cp-nav-cta">
+        <Link href="/demo" prefetch={false} className="cp-nav-cta">
           Add a repo <span aria-hidden>→</span>
         </Link>
       </nav>

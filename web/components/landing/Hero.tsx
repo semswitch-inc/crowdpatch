@@ -42,13 +42,13 @@ export default function Hero({ variant = "stream" }: HeroProps) {
         </p>
 
         <div className="cp-cta-row">
-          <Link href="/demo" className="cp-btn cp-btn-primary">
+          <Link href="/demo" prefetch={false} className="cp-btn cp-btn-primary">
             Add a repo{" "}
             <span className="arrow" aria-hidden>
               →
             </span>
           </Link>
-          <Link href="/demo" className="cp-btn cp-btn-demo">
+          <Link href="/demo" prefetch={false} className="cp-btn cp-btn-demo">
             <Play aria-hidden />
             See the Hackathon Demo
           </Link>
