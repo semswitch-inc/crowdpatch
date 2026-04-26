@@ -60,6 +60,7 @@ export default function AppSubmissionForm({
   const [agentNotes, setAgentNotes] = useState(JSDIFF_DEFAULTS.agent_notes);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [isAdvancedOpen, setIsAdvancedOpen] = useState(false);
 
   const fieldErrors: Partial<
     Record<"display_name" | "github_repo_url" | "default_branch", string>
@@ -202,62 +203,75 @@ export default function AppSubmissionForm({
         />
       </Field>
 
-      <details className="group rounded-md border border-ink-700 bg-ink-950/40">
-        <summary className="flex cursor-pointer list-none items-center justify-between px-3 py-2 font-mono text-xs font-600 uppercase tracking-[0.12em] text-ink-300 hover:text-orange-300">
+      <div className="rounded-md border border-ink-700 bg-ink-950/40 overflow-hidden">
+        <button
+          type="button"
+          onClick={() => setIsAdvancedOpen(!isAdvancedOpen)}
+          className="flex w-full cursor-pointer list-none items-center justify-between px-3 py-2 font-mono text-xs font-600 uppercase tracking-[0.12em] text-ink-300 hover:text-orange-300"
+        >
           <span>Advanced toolchain (pre-filled)</span>
-          <span className="text-ink-500 transition-transform group-open:rotate-90">
+          <span
+            className={`text-ink-500 transition-transform ${isAdvancedOpen ? "rotate-90" : ""}`}
+          >
             ›
           </span>
-        </summary>
-        <div className="flex flex-col gap-4 border-t border-ink-700 p-4">
-          <Field label="Setup command" htmlFor="setup_commands">
-            <input
-              {...PASSWORD_MANAGER_IGNORE_PROPS}
-              id="setup_commands"
-              name="setup_commands"
-              type="text"
-              autoComplete="off"
-              maxLength={500}
-              value={setupCommands}
-              onChange={(e) => setSetupCommands(e.target.value)}
-              className="cp-input mono"
-            />
-          </Field>
+        </button>
+        <div
+          className="grid transition-all duration-300 ease-in-out"
+          style={{ gridTemplateRows: isAdvancedOpen ? "1fr" : "0fr" }}
+        >
+          <div className="overflow-hidden">
+            <div className="flex flex-col gap-4 border-t border-ink-700 p-4">
+              <Field label="Setup command" htmlFor="setup_commands">
+                <input
+                  {...PASSWORD_MANAGER_IGNORE_PROPS}
+                  id="setup_commands"
+                  name="setup_commands"
+                  type="text"
+                  autoComplete="off"
+                  maxLength={500}
+                  value={setupCommands}
+                  onChange={(e) => setSetupCommands(e.target.value)}
+                  className="cp-input mono"
+                />
+              </Field>
 
-          <Field label="Test command" htmlFor="test_commands">
-            <input
-              {...PASSWORD_MANAGER_IGNORE_PROPS}
-              id="test_commands"
-              name="test_commands"
-              type="text"
-              autoComplete="off"
-              maxLength={500}
-              value={testCommands}
-              onChange={(e) => setTestCommands(e.target.value)}
-              className="cp-input mono"
-            />
-          </Field>
+              <Field label="Test command" htmlFor="test_commands">
+                <input
+                  {...PASSWORD_MANAGER_IGNORE_PROPS}
+                  id="test_commands"
+                  name="test_commands"
+                  type="text"
+                  autoComplete="off"
+                  maxLength={500}
+                  value={testCommands}
+                  onChange={(e) => setTestCommands(e.target.value)}
+                  className="cp-input mono"
+                />
+              </Field>
 
-          <Field
-            label="Project notes / agent notes"
-            htmlFor="agent_notes"
-            hint="Repo idiosyncrasies that don't fit the structured commands. Inlined verbatim into the agent prompt."
-          >
-            <textarea
-              {...PASSWORD_MANAGER_IGNORE_PROPS}
-              id="agent_notes"
-              name="agent_notes"
-              autoComplete="off"
-              maxLength={4000}
-              rows={6}
-              value={agentNotes}
-              onChange={(e) => setAgentNotes(e.target.value)}
-              className="cp-textarea mono"
-            />
-            <span className="cp-field-count">{agentNotes.length}/4000</span>
-          </Field>
+              <Field
+                label="Project notes / agent notes"
+                htmlFor="agent_notes"
+                hint="Repo idiosyncrasies that don't fit the structured commands. Inlined verbatim into the agent prompt."
+              >
+                <textarea
+                  {...PASSWORD_MANAGER_IGNORE_PROPS}
+                  id="agent_notes"
+                  name="agent_notes"
+                  autoComplete="off"
+                  maxLength={4000}
+                  rows={6}
+                  value={agentNotes}
+                  onChange={(e) => setAgentNotes(e.target.value)}
+                  className="cp-textarea mono"
+                />
+                <span className="cp-field-count">{agentNotes.length}/4000</span>
+              </Field>
+            </div>
+          </div>
         </div>
-      </details>
+      </div>
 
       {error && (
         <div className="cp-card tint-danger bar-danger pad-md text-sm text-red-200">

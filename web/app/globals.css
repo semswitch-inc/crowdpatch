@@ -1075,6 +1075,26 @@ pre {
   }
 }
 
+.cp-animate-in {
+  opacity: 0;
+  animation: eventIn 0.4s var(--ease) forwards;
+}
+
+@keyframes eventOut {
+  from {
+    opacity: 1;
+    transform: translateY(0);
+  }
+  to {
+    opacity: 0;
+    transform: translateY(-4px);
+  }
+}
+
+.cp-animate-out {
+  animation: eventOut 0.4s var(--ease) forwards;
+}
+
 /* Cursor blink for "in progress" event */
 .cp-cursor {
   display: inline-block;
@@ -1577,13 +1597,16 @@ pre {
 /* ── FEATURES (3-up) ──────────────────────────────────────── */
 .cp-features {
   display: grid;
-  grid-template-columns: repeat(3, 1fr);
+  grid-template-columns: repeat(2, 1fr);
   gap: 1px;
   background: var(--border);
   border: 1px solid var(--border);
   border-radius: var(--radius-xl);
   overflow: hidden;
   box-shadow: var(--shadow-md);
+}
+.cp-feature:nth-child(1) {
+  grid-column: span 2;
 }
 .cp-feature {
   background: var(--bg-raised);
@@ -1784,6 +1807,9 @@ pre {
   .cp-loop-rows,
   .cp-features {
     grid-template-columns: 1fr;
+  }
+  .cp-feature:nth-child(1) {
+    grid-column: span 1;
   }
   .cp-livejob {
     grid-template-columns: 1fr;

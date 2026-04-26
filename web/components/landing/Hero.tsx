@@ -2,11 +2,12 @@
 
 import Link from "next/link";
 import { useEffect, useState } from "react";
-import { Bug, Play } from "lucide-react";
+import { Bug, GitBranch } from "lucide-react";
 import { LucideIcon, type LucideIconName } from "./LucideIcon";
 import FixJobStream from "./FixJobStream";
+import BountyLedger from "./BountyLedger";
 
-export type HeroVariant = "stream" | "log" | "loop";
+export type HeroVariant = "stream" | "log" | "loop" | "bounties";
 
 type HeroProps = { variant?: HeroVariant };
 
@@ -48,10 +49,15 @@ export default function Hero({ variant = "stream" }: HeroProps) {
               →
             </span>
           </Link>
-          <Link href="/demo" prefetch={false} className="cp-btn cp-btn-demo">
-            <Play aria-hidden />
-            See the Hackathon Demo
-          </Link>
+          <a
+            href="https://github.com/semswitch-inc/crowdpatch"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="cp-btn cp-btn-demo"
+          >
+            <GitBranch aria-hidden />
+            View on GitHub
+          </a>
         </div>
 
         <p className="cp-hint cp-hint-tagline">
@@ -65,6 +71,7 @@ export default function Hero({ variant = "stream" }: HeroProps) {
         {variant === "stream" && <HeroVariantStream />}
         {variant === "log" && <HeroVariantLog />}
         {variant === "loop" && <HeroVariantLoop />}
+        {variant === "bounties" && <BountyLedger />}
       </div>
     </section>
   );
