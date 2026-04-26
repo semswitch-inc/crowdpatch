@@ -124,7 +124,7 @@ export default function BountyLedger() {
 
   return (
     <div
-      className="cp-card flex w-full flex-col !border-ink-700 !bg-ink-950/80 shadow-[0_18px_40px_rgba(0,0,0,0.6)] backdrop-blur-md"
+      className="cp-card relative z-20 ml-auto flex w-full max-w-[440px] flex-col !border-ink-700 !bg-ink-950/80 shadow-[0_18px_40px_rgba(0,0,0,0.6)] backdrop-blur-md"
       style={{ minHeight: "420px" }}
     >
       <div className="cp-card-head border-b border-ink-800 bg-ink-900/80 px-5 py-4">
