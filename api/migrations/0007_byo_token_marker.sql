@@ -1,0 +1,14 @@
+-- 0007_byo_token_marker.sql
+-- Marks the GitHub PAT class used for a fix-job. The PAT itself is NEVER
+-- stored anywhere — this column only records the auth class so /recover
+-- can refuse to silently fall back to the demo PAT on bring-your-own-token
+-- runs (which would 401 against the user's repo and confuse the failure
+-- mode).
+--
+-- Allowed values:
+--   'demo_pat'  — env.GITHUB_DEMO_PAT (the seeded jsdiff-demo path)
+--   'user_pat'  — per-request X-CrowdPatch-Repo-Token header (BYO)
+--
+-- Default 'demo_pat' so pre-existing rows keep behaving identically and
+-- the no-header jsdiff path stays byte-for-byte the same as today.
+ALTER TABLE fix_jobs ADD COLUMN auth_mode TEXT NOT NULL DEFAULT 'demo_pat';

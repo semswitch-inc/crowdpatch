@@ -26,6 +26,21 @@ Fallback if \`yarn test\` fails on issues clearly unrelated to your fix (e.g. ny
 \`yarn build\` regenerates libesm/ from src/; bypassing \`--require ./runtime\` skips coverage but still runs the failing tests. Use the fallback ONLY when the upstream failure is clearly environmental, not your code.`,
 };
 
+// BYO defaults are intentionally minimal — only `default_branch` is
+// pre-filled (most repos default to `main`), everything else is blank so
+// the user types their own toolchain. Switching to BYO mode resets all
+// fields; switching back restores JSDIFF_DEFAULTS.
+const BYO_DEFAULTS = {
+  display_name: "",
+  github_repo_url: "",
+  default_branch: "main",
+  setup_commands: "",
+  test_commands: "",
+  agent_notes: "",
+};
+
+type RunMode = "demo_pat" | "user_pat";
+
 // Client-side regex mirrors api/src/lib/github.ts parseRepoUrl shape:
 // rejects ?, #, whitespace anywhere in owner/repo. The server runs the
 // authoritative parseRepoUrl check; this is just early UX feedback.
@@ -46,6 +61,7 @@ export default function AppSubmissionForm({
   onConnected,
 }: AppSubmissionFormProps) {
   const { code: demoCode } = useDemoCode();
+  const [runMode, setRunMode] = useState<RunMode>("demo_pat");
   const [displayName, setDisplayName] = useState(JSDIFF_DEFAULTS.display_name);
   const [repoUrl, setRepoUrl] = useState(JSDIFF_DEFAULTS.github_repo_url);
   const [defaultBranch, setDefaultBranch] = useState(
@@ -60,6 +76,22 @@ export default function AppSubmissionForm({
   const [agentNotes, setAgentNotes] = useState(JSDIFF_DEFAULTS.agent_notes);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  // Switch all six fields to the chosen mode's defaults. Done as a single
+  // batch so React renders one update; we don't try to preserve user input
+  // across mode switches because the radio sits at the top of the form
+  // (the user picks before typing).
+  function switchRunMode(next: RunMode) {
+    setRunMode(next);
+    const d = next === "demo_pat" ? JSDIFF_DEFAULTS : BYO_DEFAULTS;
+    setDisplayName(d.display_name);
+    setRepoUrl(d.github_repo_url);
+    setDefaultBranch(d.default_branch);
+    setSetupCommands(d.setup_commands);
+    setTestCommands(d.test_commands);
+    setAgentNotes(d.agent_notes);
+    setError(null);
+  }
 
   const fieldErrors: Partial<
     Record<"display_name" | "github_repo_url" | "default_branch", string>
@@ -111,12 +143,15 @@ export default function AppSubmissionForm({
         default_branch: string;
       };
       // Explicit field rename: server `app_id` → client `id`. See
-      // types/connected-app.ts comment block.
+      // types/connected-app.ts comment block. auth_mode is purely
+      // client-side state (the server never stores a PAT class on the
+      // apps row), so we attach it from the radio selection here.
       onConnected({
         id: response.app_id,
         display_name: response.display_name,
         github_repo_url: response.github_repo_url,
         default_branch: response.default_branch,
+        auth_mode: runMode,
       });
     } catch (err) {
       setError(err instanceof Error ? err.message : String(err));
@@ -143,6 +178,66 @@ export default function AppSubmissionForm({
         </p>
       </div>
 
+      <fieldset className="cp-field" aria-describedby="run_mode_hint">
+        <legend className="cp-field-label">Run mode</legend>
+        <div className="flex flex-col gap-2 rounded-md border border-ink-700 bg-ink-950/40 p-3">
+          <label className="flex cursor-pointer items-start gap-2 text-sm text-ink-100">
+            <input
+              type="radio"
+              name="run_mode"
+              value="demo_pat"
+              checked={runMode === "demo_pat"}
+              onChange={() => switchRunMode("demo_pat")}
+              className="mt-1"
+            />
+            <span className="flex flex-col">
+              <span className="font-600">
+                Use the bundled jsdiff demo{" "}
+                <span className="font-mono text-xs text-lime-300">
+                  (recommended)
+                </span>
+              </span>
+              <span className="cp-small">
+                Pre-filled with the seeded `semswitch-inc/jsdiff-demo` repo.
+                Reliable end-to-end PR every run; no GitHub PAT required.
+              </span>
+            </span>
+          </label>
+          <label className="flex cursor-pointer items-start gap-2 text-sm text-ink-100">
+            <input
+              type="radio"
+              name="run_mode"
+              value="user_pat"
+              checked={runMode === "user_pat"}
+              onChange={() => switchRunMode("user_pat")}
+              className="mt-1"
+            />
+            <span className="flex flex-col">
+              <span className="font-600">Bring your own repo</span>
+              <span className="cp-small">
+                Patch any GitHub repo you control. You&apos;ll be prompted for a
+                fine-grained GitHub PAT before the patch run. The PAT isn&apos;t
+                stored — it lives only in this browser tab.
+              </span>
+            </span>
+          </label>
+        </div>
+        {runMode === "user_pat" && (
+          <div
+            id="run_mode_hint"
+            className="cp-card tint-warning bar-warning pad-md text-sm text-orange-100"
+          >
+            <strong className="font-600 text-orange-50">Heads up:</strong>{" "}
+            generate a <em>fine-grained</em> GitHub PAT scoped to a single repo
+            with <span className="font-mono text-xs">Contents: read+write</span>{" "}
+            and{" "}
+            <span className="font-mono text-xs">Pull requests: read+write</span>
+            . You&apos;ll paste it on the next step. Reloading the run page
+            loses the PAT and credits will be refunded.
+          </div>
+        )}
+      </fieldset>
+
       <Field
         label="Display name"
         htmlFor="display_name"
@@ -166,7 +261,11 @@ export default function AppSubmissionForm({
         label="GitHub repo URL"
         htmlFor="github_repo_url"
         error={fieldErrors.github_repo_url}
-        hint="Custom repos are experimental. The reliable demo uses the pre-filled jsdiff repo. To open a PR on another repo, the demo bot must have write access."
+        hint={
+          runMode === "user_pat"
+            ? "Your repo. Make sure your fine-grained PAT (next step) grants Contents: read+write and Pull requests: read+write to this repo."
+            : "Pre-filled with the bundled jsdiff demo. The reliable demo path uses this repo and the seeded server-held bot PAT."
+        }
       >
         <input
           {...PASSWORD_MANAGER_IGNORE_PROPS}

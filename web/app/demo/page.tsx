@@ -158,6 +158,7 @@ function HeroExperience() {
           <FixBugButton
             bugReportId={submitted.id}
             ctaLabel="CrowdPatch it with Claude"
+            authMode={connected.auth_mode}
             onStatusChange={setFixStatus}
             onBalanceShouldRefresh={() => {
               void refresh();

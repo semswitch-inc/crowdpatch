@@ -81,6 +81,11 @@ export interface FixJobInsert {
   // simply left them NULL.
   anthropic_agent_id: string | null;
   anthropic_environment_id: string | null;
+  // Migration 0007. 'demo_pat' = env.GITHUB_DEMO_PAT (the seeded jsdiff path);
+  // 'user_pat' = a per-request bring-your-own PAT supplied via the
+  // X-CrowdPatch-Repo-Token header. The PAT itself is NEVER stored on this
+  // row — only the auth class, so /recover can refuse the demo-PAT fallback.
+  auth_mode: "demo_pat" | "user_pat";
 }
 
 export interface CreditLedgerRow {
@@ -265,8 +270,8 @@ export async function createFixJob(
         `INSERT INTO fix_jobs
            (id, app_id, bug_report_ids_json, branch_name, status,
             started_at, created_at, updated_at, agent_variant, cost_credits,
-            anthropic_agent_id, anthropic_environment_id)
-         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+            anthropic_agent_id, anthropic_environment_id, auth_mode)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
       )
       .bind(
         job.id,
@@ -281,6 +286,7 @@ export async function createFixJob(
         job.cost_credits,
         job.anthropic_agent_id,
         job.anthropic_environment_id,
+        job.auth_mode,
       ),
     ...bugReportIds.map((bugReportId) =>
       db

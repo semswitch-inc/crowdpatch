@@ -28,9 +28,16 @@ export default function ConnectedAppCard({
             {app.github_repo_url}
           </a>
         </div>
-        <span className="shrink-0 rounded-full border border-violet-500/40 bg-violet-500/[0.10] px-2 py-0.5 font-mono text-xs font-600 text-violet-100">
-          {app.default_branch}
-        </span>
+        <div className="flex shrink-0 flex-wrap items-center gap-2">
+          {app.auth_mode === "user_pat" && (
+            <span className="rounded-full border border-orange-500/40 bg-orange-500/[0.10] px-2 py-0.5 font-mono text-xs font-600 text-orange-100">
+              BYO PAT
+            </span>
+          )}
+          <span className="rounded-full border border-violet-500/40 bg-violet-500/[0.10] px-2 py-0.5 font-mono text-xs font-600 text-violet-100">
+            {app.default_branch}
+          </span>
+        </div>
       </div>
 
       <div className="flex flex-wrap items-center gap-3">

@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 
 import EventLog from "@/components/EventLog";
-import { withDemoHeaders } from "@/lib/api";
+import { withDemoHeaders, withRepoToken } from "@/lib/api";
 import { subscribeToFixJob } from "@/lib/eventStream";
 import { pollFixJobUntilTotals } from "@/lib/fixJobs";
 import { useDemoCode } from "@/lib/useDemoCode";
@@ -14,6 +14,18 @@ import type { FixJobSummary } from "@/types/fix-job";
 // source of truth at charge time; this constant only labels the post-refund
 // badge after a confirmed terminal-failure SSE event.
 const REFUND_AMOUNT_HINT = 5;
+
+// Mirrors api/src/lib/repoToken.ts isValidRepoTokenFormat. Server is the
+// authoritative gate; this is just early UX feedback so the submit button
+// can disable until the user pastes a well-formed fine-grained PAT.
+const REPO_TOKEN_RE = /^github_pat_[A-Za-z0-9_]{20,255}$/;
+
+const PAT_INPUT_IGNORE_PROPS = {
+  "data-1p-ignore": "true",
+  "data-bwignore": "true",
+  "data-form-type": "other",
+  "data-lpignore": "true",
+} as const;
 
 type State =
   | { status: "idle" }
@@ -42,6 +54,13 @@ type State =
 interface FixBugButtonProps {
   bugReportId: string;
   ctaLabel?: string;
+  // Bring-your-own GitHub PAT mode. 'demo_pat' (default) = the seeded
+  // jsdiff path, no PAT input. 'user_pat' = render a fine-grained PAT
+  // input above the run button; the value is sent on every POST /fix-jobs
+  // and POST /fix-jobs/:id/recover call via the X-CrowdPatch-Repo-Token
+  // header. The PAT lives ONLY in this component's state — it is wiped
+  // on terminal status transitions and on unmount, never persisted.
+  authMode?: "demo_pat" | "user_pat";
   // Pushed up to the parent on every status transition so the page-level
   // stepper can advance to Step 4 on success and drop back to Step 3 on
   // retry / Run another. Optional — the legacy ?bug=<id> path renders
@@ -57,6 +76,7 @@ interface FixBugButtonProps {
 export default function FixBugButton({
   bugReportId,
   ctaLabel,
+  authMode = "demo_pat",
   onStatusChange,
   onBalanceShouldRefresh,
 }: FixBugButtonProps) {
@@ -64,6 +84,19 @@ export default function FixBugButton({
   const [state, setState] = useState<State>({ status: "idle" });
   const [refundedAmount, setRefundedAmount] = useState<number | null>(null);
   const [usage, setUsage] = useState<FixJobSummary | null>(null);
+  // BYO PAT only used in authMode === 'user_pat'. Wiped on terminal
+  // status transitions (success/error) and on unmount so the value never
+  // outlives a single run; closing the tab also drops it.
+  const [repoToken, setRepoToken] = useState("");
+  const repoTokenValid =
+    authMode !== "user_pat" || REPO_TOKEN_RE.test(repoToken);
+  // Watchdog probe captures `repoToken` via this ref so it always reads
+  // the latest value without forcing the interval to re-create on every
+  // keystroke. (Same pattern as stateRef below.)
+  const repoTokenRef = useRef("");
+  useEffect(() => {
+    repoTokenRef.current = repoToken;
+  }, [repoToken]);
   const closeRef = useRef<(() => void) | null>(null);
   // AbortController for the post-terminal pollFixJobUntilTotals call.
   // Cancelled on unmount, on Run another / Retry, and before starting a
@@ -74,6 +107,9 @@ export default function FixBugButton({
     return () => {
       closeRef.current?.();
       usageAbortRef.current?.abort();
+      // Defense in depth: zero the ref on unmount so a captured probe
+      // can't read a leftover token.
+      repoTokenRef.current = "";
     };
   }, []);
 
@@ -123,11 +159,20 @@ export default function FixBugButton({
         pr_url?: string;
         ended_reason?: string;
         age_seconds?: number;
+        error?: string;
       };
       try {
         const res = await fetch(
           `${apiBase}/api/fix-jobs/${cur.fixJobId}/recover`,
-          withDemoHeaders(demoCode, { method: "POST" }),
+          // BYO PAT is re-supplied on every probe via repoTokenRef.current.
+          // For demo_pat runs the ref stays "" and withRepoToken is a no-op.
+          // The recover endpoint refunds + 409s when a user_pat row gets a
+          // probe with no header — surfaced via the data.status === "failed"
+          // branch below.
+          withRepoToken(
+            repoTokenRef.current || null,
+            withDemoHeaders(demoCode, { method: "POST" }),
+          ),
         );
         data = (await res.json()) as typeof data;
       } catch (err) {
@@ -152,6 +197,9 @@ export default function FixBugButton({
           prUrl: data.pr_url,
           summaryText: "",
         });
+        // Wipe BYO PAT at every terminal transition so a Run another / Retry
+        // forces fresh entry. setRepoToken("") is a no-op when already empty.
+        setRepoToken("");
         // Recovery may have re-charged a previously-refunded job — refresh
         // so the balance chip reflects the truth.
         onBalanceShouldRefresh?.();
@@ -169,6 +217,7 @@ export default function FixBugButton({
             data.age_seconds ? ` (after ${String(data.age_seconds)}s)` : ""
           }`,
         });
+        setRepoToken("");
         // Recovery refunded the failed job; refresh to reveal the +5.
         onBalanceShouldRefresh?.();
         startUsagePoll(apiBase, after.fixJobId);
@@ -211,6 +260,21 @@ export default function FixBugButton({
         startTs: null,
         message: "NEXT_PUBLIC_API_BASE not set in .env.local",
       });
+      setRepoToken("");
+      return;
+    }
+    // UI-side belt-and-suspenders for the server's repo_token_required /
+    // invalid_repo_token_format gates. The submit button is disabled in
+    // this case; this guard catches keyboard-submit / form-submit edges.
+    if (authMode === "user_pat" && !REPO_TOKEN_RE.test(repoToken)) {
+      setState({
+        status: "error",
+        cards: [],
+        startTs: null,
+        message:
+          "Paste a fine-grained GitHub PAT (github_pat_…) before running.",
+      });
+      setRepoToken("");
       return;
     }
 
@@ -223,11 +287,14 @@ export default function FixBugButton({
     try {
       const res = await fetch(
         `${apiBase}/api/fix-jobs`,
-        withDemoHeaders(demoCode, {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ bug_report_id: bugReportId }),
-        }),
+        withRepoToken(
+          authMode === "user_pat" ? repoToken : null,
+          withDemoHeaders(demoCode, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ bug_report_id: bugReportId }),
+          }),
+        ),
       );
 
       if (!res.ok) {
@@ -285,6 +352,7 @@ export default function FixBugButton({
               summaryText: data.summary_text,
             };
           });
+          setRepoToken("");
           closeRef.current = null;
           // Charge stays in effect on success — refresh keeps the chip
           // accurate in case the user had stale state.
@@ -310,6 +378,7 @@ export default function FixBugButton({
               message: `${data.label} (${data.ended_reason})`,
             };
           });
+          setRepoToken("");
           closeRef.current = null;
           // Refund landed server-side BEFORE the SSE event was emitted —
           // refresh now reveals the +5.
@@ -342,6 +411,7 @@ export default function FixBugButton({
         startTs: null,
         message: err instanceof Error ? err.message : String(err),
       });
+      setRepoToken("");
     }
   }
 
@@ -354,24 +424,66 @@ export default function FixBugButton({
   /* ── IDLE ─────────────────────────────────────────────── */
   if (state.status === "idle") {
     return (
-      <div className="flex flex-wrap items-center gap-3">
-        <button
-          type="button"
-          onClick={handleClick}
-          className="cp-btn cp-btn-primary"
-        >
-          <span>
-            {ctaLabel ?? (
-              <>
-                Try CrowdPatch on{" "}
-                <span className="font-mono">{bugReportId}</span>
-              </>
+      <div className="flex w-full flex-col gap-4">
+        {authMode === "user_pat" && (
+          <div className="cp-card pad-md flex flex-col gap-2">
+            <label htmlFor="repo_token" className="cp-field-label">
+              GitHub fine-grained PAT
+            </label>
+            <input
+              {...PAT_INPUT_IGNORE_PROPS}
+              id="repo_token"
+              name="repo_token"
+              type="password"
+              autoComplete="one-time-code"
+              spellCheck={false}
+              placeholder="github_pat_…"
+              value={repoToken}
+              onChange={(e) => setRepoToken(e.target.value)}
+              className="cp-input mono"
+            />
+            <span className="cp-field-hint">
+              Required permissions:{" "}
+              <span className="font-mono text-xs">Contents: read+write</span>{" "}
+              and{" "}
+              <span className="font-mono text-xs">
+                Pull requests: read+write
+              </span>
+              , scoped to this repo. Never stored — kept only in this browser
+              tab.
+            </span>
+            {!repoTokenValid && repoToken.length > 0 && (
+              <span className="cp-field-error">
+                Must start with <span className="font-mono">github_pat_</span>{" "}
+                and be a valid fine-grained PAT.
+              </span>
             )}
-          </span>
-          <span className="arrow" aria-hidden>
-            →
-          </span>
-        </button>
+            <span className="font-mono text-xs text-red-300">
+              Don&apos;t reload this tab during the run — recovery isn&apos;t
+              possible without your PAT.
+            </span>
+          </div>
+        )}
+        <div className="flex flex-wrap items-center gap-3">
+          <button
+            type="button"
+            onClick={handleClick}
+            disabled={authMode === "user_pat" && !repoTokenValid}
+            className="cp-btn cp-btn-primary"
+          >
+            <span>
+              {ctaLabel ?? (
+                <>
+                  Try CrowdPatch on{" "}
+                  <span className="font-mono">{bugReportId}</span>
+                </>
+              )}
+            </span>
+            <span className="arrow" aria-hidden>
+              →
+            </span>
+          </button>
+        </div>
       </div>
     );
   }

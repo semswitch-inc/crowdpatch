@@ -26,6 +26,8 @@ import {
 } from "../lib/credits";
 import { createFixJob, getApp, getBugReport, updateFixJob } from "../lib/db";
 import { GitHubClient, parseRepoUrl } from "../lib/github";
+import { redact } from "../lib/redact";
+import { REPO_TOKEN_HEADER, isValidRepoTokenFormat } from "../lib/repoToken";
 import { slugify } from "../lib/text";
 
 const fixJobs = new Hono<{ Bindings: Bindings }>();
@@ -126,7 +128,11 @@ fixJobs.post("/fix-jobs", zValidator("json", PostBody), async (c) => {
   if (existing) {
     // Dedup-first: deduped requests reconnect to an in-flight job and MUST
     // NOT trigger a new charge or balance check. The original job's charge
-    // (if any) already landed when its row was created.
+    // (if any) already landed when its row was created. The header check
+    // below is intentionally skipped on dedup — the original POST already
+    // validated the PAT and the BYO run is in flight under the original
+    // auth_mode='user_pat' marker; reconnecting from another tab without
+    // the header is a legitimate UX path.
     return c.json(
       {
         fix_job_id: existing.id,
@@ -136,6 +142,69 @@ fixJobs.post("/fix-jobs", zValidator("json", PostBody), async (c) => {
       200,
     );
   }
+
+  // 3a. BYO-token decision matrix. The repo PAT travels via the
+  // X-CrowdPatch-Repo-Token header and is NEVER persisted — only the
+  // `auth_mode` class is stored on the row so /recover can refuse the
+  // demo-PAT fallback on BYO runs.
+  //
+  // Decision table:
+  //   bundled jsdiff demo repo + no header → demo_pat (env.GITHUB_DEMO_PAT)
+  //   bundled jsdiff demo repo + header    → user_pat (header token)
+  //   any other repo            + no header → 400 repo_token_required
+  //                                          (no row, no charge, no DO call)
+  //   any other repo            + header   → user_pat (header token)
+  //
+  // The fail-closed behavior on "any other repo + no header" is deliberate:
+  // silently using GITHUB_DEMO_PAT against a non-demo repo would 401 inside
+  // the agent run and look like a Claude / Anthropic / sandbox failure,
+  // confusing the demo. We surface the misuse at the request boundary.
+  const demoCoords = parseRepoUrl(c.env.DEMO_REPO_URL);
+  if (!demoCoords) {
+    return c.json(
+      {
+        error: "demo_repo_misconfigured",
+        message: "DEMO_REPO_URL env var is not a valid github.com repo URL.",
+      },
+      503,
+    );
+  }
+  const repoCoords = parseRepoUrl(app.github_repo_url);
+  // parseRepoUrl on app.github_repo_url already passed the malformed check
+  // above; assert here only to please TS narrowing.
+  if (!repoCoords) {
+    return c.json({ error: "app_repo_url_unparseable" }, 500);
+  }
+  const isBundledDemoRepo =
+    repoCoords.owner.toLowerCase() === demoCoords.owner.toLowerCase() &&
+    repoCoords.repo.toLowerCase() === demoCoords.repo.toLowerCase();
+
+  const repoTokenHeader = c.req.header(REPO_TOKEN_HEADER);
+  let userPat: string | null = null;
+  if (repoTokenHeader !== undefined && repoTokenHeader !== "") {
+    if (!isValidRepoTokenFormat(repoTokenHeader)) {
+      return c.json(
+        {
+          error: "invalid_repo_token_format",
+          message:
+            "Repo token must be a fine-grained GitHub PAT (github_pat_…).",
+        },
+        400,
+      );
+    }
+    userPat = repoTokenHeader;
+  } else if (!isBundledDemoRepo) {
+    return c.json(
+      {
+        error: "repo_token_required",
+        message:
+          "This repo isn't the bundled demo. Provide your own GitHub PAT via the X-CrowdPatch-Repo-Token header to run a patch on it.",
+      },
+      400,
+    );
+  }
+  const authMode: "demo_pat" | "user_pat" =
+    userPat !== null ? "user_pat" : "demo_pat";
 
   // 4. Pre-flight balance check — only on the truly-new path. Refuse with
   // 402 (Payment Required) if the demo user can't afford the patch. The
@@ -184,6 +253,7 @@ fixJobs.post("/fix-jobs", zValidator("json", PostBody), async (c) => {
       // historical mapping.
       anthropic_agent_id: agentId,
       anthropic_environment_id: environmentId,
+      auth_mode: authMode,
     },
     [bug_report_id],
   );
@@ -209,6 +279,10 @@ fixJobs.post("/fix-jobs", zValidator("json", PostBody), async (c) => {
           branch_name: branchName,
           anthropic_agent_id: agentId,
           anthropic_environment_id: environmentId,
+          // Forward the BYO PAT to the DO via the in-memory worker→DO RPC
+          // fetch. Cloudflare doesn't log the body of internal RPC calls;
+          // the DO consumes the token in-memory and never persists it.
+          ...(userPat !== null ? { github_token_override: userPat } : {}),
         }),
       }),
     );
@@ -270,9 +344,14 @@ async function markFixJobDoStartFailed(
 ): Promise<void> {
   // No refund — the DO never started, so no charge was issued. This matches
   // the plan's decision-#5(g) operation order.
+  // redact() is defense in depth: a BYO-token run that fails inside the
+  // worker→DO fetch could in theory surface header bytes inside the thrown
+  // error message; redact() strips github_pat_*, ghp_*, sk-ant-*, Bearer *
+  // before the string lands in D1.error_message (which is itself surfaced
+  // back to the UI via the error_event SSE card and to R2 artifacts).
   await updateFixJob(env.DB, fixJobId, {
     status: "failed",
-    error_message: detail.slice(0, 500),
+    error_message: redact(detail).slice(0, 500),
     ended_reason: "do_start_failed",
     completed_at: Math.floor(Date.now() / 1000),
   });
@@ -416,7 +495,7 @@ fixJobs.post("/fix-jobs/:id/recover", async (c) => {
 
   const job = await c.env.DB.prepare(
     `SELECT id, app_id, branch_name, status, pr_url, bug_report_ids_json,
-            started_at
+            started_at, auth_mode
        FROM fix_jobs WHERE id = ?`,
   )
     .bind(fixJobId)
@@ -428,6 +507,7 @@ fixJobs.post("/fix-jobs/:id/recover", async (c) => {
       pr_url: string | null;
       bug_report_ids_json: string;
       started_at: number | null;
+      auth_mode: "demo_pat" | "user_pat";
     }>();
   if (!job) {
     return c.json({ error: "fix_job not found" }, 404);
@@ -485,7 +565,63 @@ fixJobs.post("/fix-jobs/:id/recover", async (c) => {
     );
   }
 
-  const github = new GitHubClient(c.env.GITHUB_DEMO_PAT);
+  // BYO-token recovery decision matrix (mirrors POST /fix-jobs §3a):
+  //   row.auth_mode='demo_pat' → use env.GITHUB_DEMO_PAT, ignore any header
+  //   row.auth_mode='user_pat' + header valid → use the header token
+  //   row.auth_mode='user_pat' + no header    → refund (idempotent), mark
+  //     failed user_pat_lost, return 409 user_pat_required. Honest UX:
+  //     the PAT was never stored, so a tab reload that lost the React
+  //     state cannot resurrect the run.
+  //   row.auth_mode='user_pat' + invalid format → 400, no state change
+  //     (defensive — the format already passed at /fix-jobs POST time).
+  let recoveryToken: string;
+  if (job.auth_mode === "user_pat") {
+    const headerToken = c.req.header(REPO_TOKEN_HEADER);
+    if (headerToken === undefined || headerToken === "") {
+      try {
+        await refundForFixJob(c.env.DB, fixJobId);
+      } catch (err) {
+        console.warn(
+          `[recover] refund failed for ${fixJobId}: ${
+            err instanceof Error ? err.message : String(err)
+          }`,
+        );
+      }
+      await updateFixJob(c.env.DB, fixJobId, {
+        status: "failed",
+        error_message: "BYO PAT was not re-supplied on recovery",
+        ended_reason: "user_pat_lost",
+        completed_at: Math.floor(Date.now() / 1000),
+      });
+      await writeRunArtifactsBestEffort(c.env, fixJobId);
+      return c.json(
+        {
+          error: "user_pat_required",
+          status: "failed",
+          ended_reason: "user_pat_lost",
+          recovered: true,
+          message:
+            "We never store your PAT. The browser tab lost the session — your credits have been refunded. If your repo has a fix/* branch, the agent already pushed it; you can open the PR manually.",
+        },
+        409,
+      );
+    }
+    if (!isValidRepoTokenFormat(headerToken)) {
+      return c.json(
+        {
+          error: "invalid_repo_token_format",
+          message:
+            "Repo token must be a fine-grained GitHub PAT (github_pat_…).",
+        },
+        400,
+      );
+    }
+    recoveryToken = headerToken;
+  } else {
+    recoveryToken = c.env.GITHUB_DEMO_PAT;
+  }
+
+  const github = new GitHubClient(recoveryToken);
 
   const branchExists = await github.branchExists(
     repoCoords.owner,

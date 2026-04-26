@@ -87,6 +87,7 @@ async function makeFixJob(): Promise<string> {
       cost_credits: PATCH_COST,
       anthropic_agent_id: null,
       anthropic_environment_id: null,
+      auth_mode: "demo_pat",
     },
     [],
   );

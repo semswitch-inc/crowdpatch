@@ -7,6 +7,7 @@ import bugReports from "./routes/bugReports";
 import credits from "./routes/credits";
 import fixJobs from "./routes/fixJobs";
 import { DEMO_CODE_HEADER, requireDemoCode } from "./lib/demoCode";
+import { REPO_TOKEN_HEADER } from "./lib/repoToken";
 
 // Bindings declared in wrangler.toml. Cloudflare injects these at runtime.
 export type Bindings = {
@@ -89,7 +90,11 @@ app.use(
       return null;
     },
     allowMethods: ["GET", "POST", "OPTIONS"],
-    allowHeaders: ["Content-Type", DEMO_CODE_HEADER],
+    // REPO_TOKEN_HEADER is the bring-your-own GitHub PAT for custom-repo
+    // runs; without it in allowHeaders the browser preflight rejects the
+    // POST /api/fix-jobs and POST /api/fix-jobs/:id/recover requests that
+    // carry it.
+    allowHeaders: ["Content-Type", DEMO_CODE_HEADER, REPO_TOKEN_HEADER],
   }),
 );
 

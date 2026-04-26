@@ -42,6 +42,13 @@ export interface StartPayload {
   branch_name: string;
   anthropic_agent_id: string;
   anthropic_environment_id: string;
+  // Bring-your-own GitHub PAT for custom-repo runs (migration 0007 +
+  // lib/repoToken.ts). When present, used as BOTH the
+  // github_repository.authorization_token on the Anthropic session AND
+  // the Octokit auth for the post-session PR open call. When absent,
+  // both fall back to env.GITHUB_DEMO_PAT (the seeded jsdiff-demo path).
+  // Never persisted, never logged, never injected into the prompt.
+  github_token_override?: string;
 }
 
 export class AgentSessionDO extends DurableObject<Bindings> {
@@ -274,7 +281,12 @@ export class AgentSessionDO extends DurableObject<Bindings> {
     }
 
     const client = getAnthropicClient(this.env.ANTHROPIC_API_KEY);
-    const github = new GitHubClient(this.env.GITHUB_DEMO_PAT);
+    // BYO PAT (when present) is used here for the PR open call AND below
+    // for the github_repository resource auth. Falls back to GITHUB_DEMO_PAT
+    // for the seeded jsdiff-demo path so that flow stays byte-identical.
+    const repoAuthToken =
+      payload.github_token_override ?? this.env.GITHUB_DEMO_PAT;
+    const github = new GitHubClient(repoAuthToken);
     // Hoisted above try so the finally block can run cumulative-usage
     // retrieve + archive on EVERY terminal path (success, agent_no_push,
     // timeout, generic catch). On the malformed-URL path above this method
@@ -314,7 +326,7 @@ export class AgentSessionDO extends DurableObject<Bindings> {
           {
             type: "github_repository",
             url: payload.app.github_repo_url,
-            authorization_token: this.env.GITHUB_DEMO_PAT,
+            authorization_token: repoAuthToken,
             mount_path: REPO_MOUNT_PATH,
           },
           ...buildOptionalMemoryStoreResource(this.env),
