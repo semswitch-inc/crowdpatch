@@ -26,9 +26,7 @@ interface EventLogProps {
 
 export default function EventLog({ cards, startTs }: EventLogProps) {
   if (cards.length === 0) {
-    return (
-      <div className="cp-mono cp-hint">Waiting for first event…</div>
-    );
+    return <div className="cp-mono cp-hint">Waiting for first event…</div>;
   }
 
   return (

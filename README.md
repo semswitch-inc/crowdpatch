@@ -16,7 +16,6 @@ Earn — Testers receive currency credits for testing apps and even more currenc
 CrowdPatch It - Uploader clicks button to "CrowdPatch It" (backed by Claude Managed Agents), spends currency credits to spawn Claude agents to diagnose and fix the reported bugs. Managed Agents enter a sandbox, diagnose, write the fix, open a PR
 Ship — Developer reviews, merges, ships. App is permanently better.
 
-
 Why It Matters
 Every other AI coding tool on earth requires the developer to be in the loop — babysitting suggestions, approving diffs, reviewing output line by line. CrowdPatch inverts the whole model:
 
@@ -108,6 +107,15 @@ the button. The agent will clone
 [`semswitch-inc/jsdiff-demo`](https://github.com/semswitch-inc/jsdiff-demo),
 fix the planted bug, and open a PR. Watch the live event log render
 each step in real time.
+
+> **Demo access code (optional in local dev)**: Mutating endpoints (POST
+> `/api/apps`, `/api/bug-reports`, `/api/credits/claim`, `/api/fix-jobs`,
+> `/api/fix-jobs/:id/recover`) are gated behind a shared
+> `X-CrowdPatch-Demo-Code` header. The local frontend bypasses the prompt
+> when `NEXT_PUBLIC_API_BASE` points at localhost, and the API bypasses the
+> check when `DEMO_ACCESS_CODE` is unset AND `ENVIRONMENT=development` (the
+> wrangler-dev defaults). To exercise the gate locally, set
+> `DEMO_ACCESS_CODE=anything` in `api/.dev.vars`.
 
 ## Try it on your own repo
 
@@ -202,6 +210,12 @@ npm run db:seed:prod
 ```bash
 npx wrangler secret put ANTHROPIC_API_KEY
 npx wrangler secret put GITHUB_DEMO_PAT
+# REQUIRED in production — gates mutating endpoints (apps, bug-reports,
+# credits/claim, fix-jobs, fix-jobs/:id/recover) behind the
+# X-CrowdPatch-Demo-Code header. Without this, those endpoints return
+# 503 demo_code_not_configured (fail-closed). Pick any value and share
+# it with judges/testers.
+npx wrangler secret put DEMO_ACCESS_CODE
 # Optional — the production wrangler.toml default is "production", which
 # disables the /debug/anthropic-agents route. Override if you want it on:
 npx wrangler secret put ENVIRONMENT

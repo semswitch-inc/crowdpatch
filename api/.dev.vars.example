@@ -8,6 +8,15 @@
 # line restores development behavior locally without touching the toml.
 ENVIRONMENT=development
 
+# Shared demo access code. Mutating endpoints (POST /api/apps,
+# /api/bug-reports, /api/credits/claim, /api/fix-jobs, /api/fix-jobs/:id/recover)
+# require this value in the `X-CrowdPatch-Demo-Code` request header.
+# OPTIONAL locally — the gate passes through when this is unset AND
+# ENVIRONMENT=development (the default for `wrangler dev`). Set it to any
+# string to exercise the gate locally. In production, set it as a Worker
+# secret: `npx wrangler secret put DEMO_ACCESS_CODE`.
+# DEMO_ACCESS_CODE=local-dev
+
 # Anthropic API key — https://console.anthropic.com/settings/keys
 ANTHROPIC_API_KEY=sk-ant-api03-REPLACE_ME
 

@@ -1884,7 +1884,8 @@ pre {
   border-radius: var(--radius-md);
   font-family: var(--font-sans);
   font-size: var(--fs-sm);
-  transition: border-color var(--dur-base) var(--ease),
+  transition:
+    border-color var(--dur-base) var(--ease),
     box-shadow var(--dur-base) var(--ease);
 }
 .cp-input.mono,
@@ -1930,16 +1931,28 @@ pre {
 
 /* Card variants -------------------------------------------------- */
 .cp-card.tint-success {
-  border-color: rgb(125 220 26 / 0.30);
-  background: linear-gradient(180deg, rgb(125 220 26 / 0.04), var(--bg-raised) 60%);
+  border-color: rgb(125 220 26 / 0.3);
+  background: linear-gradient(
+    180deg,
+    rgb(125 220 26 / 0.04),
+    var(--bg-raised) 60%
+  );
 }
 .cp-card.tint-agent {
-  border-color: rgb(138 82 255 / 0.30);
-  background: linear-gradient(180deg, rgb(138 82 255 / 0.04), var(--bg-raised) 60%);
+  border-color: rgb(138 82 255 / 0.3);
+  background: linear-gradient(
+    180deg,
+    rgb(138 82 255 / 0.04),
+    var(--bg-raised) 60%
+  );
 }
 .cp-card.tint-danger {
   border-color: rgb(255 92 82 / 0.35);
-  background: linear-gradient(180deg, rgb(255 92 82 / 0.05), var(--bg-raised) 60%);
+  background: linear-gradient(
+    180deg,
+    rgb(255 92 82 / 0.05),
+    var(--bg-raised) 60%
+  );
 }
 .cp-card.bar-success {
   border-left: 4px solid var(--lime-500);

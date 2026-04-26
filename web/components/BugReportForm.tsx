@@ -2,6 +2,8 @@
 
 import { useState } from "react";
 
+import { withDemoHeaders } from "@/lib/api";
+import { useDemoCode } from "@/lib/useDemoCode";
 import type { SubmittedBug } from "@/types/submitted-bug";
 
 // Mirrors api/seeds/dev.sql bug_001 byte-for-byte. Submitting unedited
@@ -32,6 +34,7 @@ export default function BugReportForm({
   appId,
   onSubmitted,
 }: BugReportFormProps) {
+  const { code: demoCode } = useDemoCode();
   const [reporterName, setReporterName] = useState(
     BUG_001_DEFAULTS.reporter_name,
   );
@@ -62,17 +65,20 @@ export default function BugReportForm({
     setSubmitting(true);
     setError(null);
     try {
-      const res = await fetch(`${apiBase}/api/bug-reports`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          title: title.trim(),
-          description: description.trim(),
-          reporter_name: reporterName.trim(),
-          severity,
-          app_id: appId,
+      const res = await fetch(
+        `${apiBase}/api/bug-reports`,
+        withDemoHeaders(demoCode, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            title: title.trim(),
+            description: description.trim(),
+            reporter_name: reporterName.trim(),
+            severity,
+            app_id: appId,
+          }),
         }),
-      });
+      );
       if (!res.ok) {
         throw new Error(await extractErrorDetail(res));
       }

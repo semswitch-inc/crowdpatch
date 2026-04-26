@@ -9,10 +9,12 @@ import AppSubmissionForm from "@/components/AppSubmissionForm";
 import BugReportForm from "@/components/BugReportForm";
 import ConnectedAppCard from "@/components/ConnectedAppCard";
 import CreditDisplay from "@/components/CreditDisplay";
+import DemoAccessGate from "@/components/DemoAccessGate";
 import FixBugButton from "@/components/FixBugButton";
 import StepIndicator from "@/components/StepIndicator";
 import SubmittedBugCard from "@/components/SubmittedBugCard";
 import { useBalance } from "@/lib/credits";
+import { useDemoCode } from "@/lib/useDemoCode";
 import type { ConnectedApp } from "@/types/connected-app";
 import type { SubmittedBug } from "@/types/submitted-bug";
 
@@ -40,21 +42,35 @@ function HeroExperience() {
   //   - FixBugButton at every charge / terminal SSE / recovery boundary
   const apiBase = process.env.NEXT_PUBLIC_API_BASE;
   const { balance, lastDelta, refresh, signalDelta } = useBalance(apiBase);
+  const { code: demoCode, clearCode } = useDemoCode();
+  const isLocalApi = apiBase?.startsWith("http://localhost") ?? false;
 
   // Backup demo path: /demo?bug=<id> renders the simpler single-button flow,
   // but credit chip + claim still appear above so the loop stays visible.
   if (urlBugId) {
     return (
       <div className="flex w-full flex-col gap-6">
-        <CreditDisplay
-          balance={balance}
-          lastDelta={lastDelta}
-          apiBase={apiBase}
-          onAfterClaim={(granted) => {
-            signalDelta(granted);
-            void refresh();
-          }}
-        />
+        <div className="flex flex-wrap items-center gap-3">
+          <CreditDisplay
+            balance={balance}
+            lastDelta={lastDelta}
+            apiBase={apiBase}
+            onAfterClaim={(granted) => {
+              signalDelta(granted);
+              void refresh();
+            }}
+          />
+          {!isLocalApi && demoCode && (
+            <button
+              type="button"
+              onClick={clearCode}
+              className="cp-btn cp-btn-sm cp-btn-ghost"
+              title="Clear the demo access code and re-enter."
+            >
+              Change code
+            </button>
+          )}
+        </div>
         <FixBugButton
           bugReportId={urlBugId}
           onBalanceShouldRefresh={() => {
@@ -76,15 +92,27 @@ function HeroExperience() {
 
   return (
     <div className="flex w-full flex-col gap-6">
-      <CreditDisplay
-        balance={balance}
-        lastDelta={lastDelta}
-        apiBase={apiBase}
-        onAfterClaim={(granted) => {
-          signalDelta(granted);
-          void refresh();
-        }}
-      />
+      <div className="flex flex-wrap items-center gap-3">
+        <CreditDisplay
+          balance={balance}
+          lastDelta={lastDelta}
+          apiBase={apiBase}
+          onAfterClaim={(granted) => {
+            signalDelta(granted);
+            void refresh();
+          }}
+        />
+        {!isLocalApi && demoCode && (
+          <button
+            type="button"
+            onClick={clearCode}
+            className="cp-btn cp-btn-sm cp-btn-ghost"
+            title="Clear the demo access code and re-enter."
+          >
+            Change code
+          </button>
+        )}
+      </div>
       <StepIndicator active={activeStep} />
 
       {phase === "connect" && (
@@ -201,7 +229,9 @@ export default function Demo() {
             <div className="font-mono text-sm text-ink-300">Loading…</div>
           }
         >
-          <HeroExperience />
+          <DemoAccessGate>
+            <HeroExperience />
+          </DemoAccessGate>
         </Suspense>
 
         {/* ── How this works ─────────────────────────────── */}

@@ -16,6 +16,11 @@ also works and redirects to `/demo` when given a `?bug=<id>` query.
 
 `NEXT_PUBLIC_API_BASE` controls which API to hit. Defaults to local during dev (see `.env.local.example`).
 
+The demo flow is gated behind a shared access code (sent as
+`X-CrowdPatch-Demo-Code` on protected POSTs). The gate is bypassed
+automatically when `NEXT_PUBLIC_API_BASE` points at localhost, so local
+dev needs no extra setup. See the root README for the full story.
+
 ## Quality gate
 
 ```bash

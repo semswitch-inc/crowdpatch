@@ -2,6 +2,8 @@
 
 import { useState } from "react";
 
+import { withDemoHeaders } from "@/lib/api";
+import { useDemoCode } from "@/lib/useDemoCode";
 import type { ConnectedApp } from "@/types/connected-app";
 
 // Mirrors api/seeds/dev.sql lines 37-55 byte-for-byte. A no-edit submit
@@ -36,6 +38,7 @@ interface AppSubmissionFormProps {
 export default function AppSubmissionForm({
   onConnected,
 }: AppSubmissionFormProps) {
+  const { code: demoCode } = useDemoCode();
   const [displayName, setDisplayName] = useState(JSDIFF_DEFAULTS.display_name);
   const [repoUrl, setRepoUrl] = useState(JSDIFF_DEFAULTS.github_repo_url);
   const [defaultBranch, setDefaultBranch] = useState(
@@ -76,18 +79,21 @@ export default function AppSubmissionForm({
     setSubmitting(true);
     setError(null);
     try {
-      const res = await fetch(`${apiBase}/api/apps`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          display_name: displayName.trim(),
-          github_repo_url: repoUrl.trim(),
-          default_branch: defaultBranch.trim(),
-          setup_commands: setupCommands,
-          test_commands: testCommands,
-          agent_notes: agentNotes,
+      const res = await fetch(
+        `${apiBase}/api/apps`,
+        withDemoHeaders(demoCode, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            display_name: displayName.trim(),
+            github_repo_url: repoUrl.trim(),
+            default_branch: defaultBranch.trim(),
+            setup_commands: setupCommands,
+            test_commands: testCommands,
+            agent_notes: agentNotes,
+          }),
         }),
-      });
+      );
       if (!res.ok) {
         throw new Error(await extractErrorDetail(res));
       }

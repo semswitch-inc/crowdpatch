@@ -37,6 +37,29 @@ credentials needed to run it locally.
 - **Octokit** — used inside the DO to verify the agent pushed its branch
   and to open the resulting pull request (`src/lib/github.ts`).
 
+## Demo access code
+
+Mutating endpoints (POST `/api/apps`, `/api/bug-reports`,
+`/api/credits/claim`, `/api/fix-jobs`, `/api/fix-jobs/:id/recover`) are
+gated behind a shared demo access code. Clients must send the value of
+the `DEMO_ACCESS_CODE` env var in the `X-CrowdPatch-Demo-Code` request
+header. Read-only routes (`/api/credits/balance`, `GET /api/fix-jobs/:id`,
+SSE `/api/fix-jobs/:id/events`) stay public — SSE specifically must
+remain unauthenticated because native browser `EventSource` cannot send
+custom headers. See `src/lib/demoCode.ts` for the middleware.
+
+| Configuration                                        | Behavior                                     |
+| ---------------------------------------------------- | -------------------------------------------- |
+| `DEMO_ACCESS_CODE` set + matching header             | Pass through                                 |
+| `DEMO_ACCESS_CODE` set + missing header              | 403 `missing_demo_code`                      |
+| `DEMO_ACCESS_CODE` set + wrong header                | 403 `invalid_demo_code`                      |
+| `DEMO_ACCESS_CODE` unset + `ENVIRONMENT=development` | Pass through (local-dev convenience)         |
+| `DEMO_ACCESS_CODE` unset + non-dev                   | 503 `demo_code_not_configured` (fail-closed) |
+
+Set the production secret via `npx wrangler secret put DEMO_ACCESS_CODE`.
+Locally, add it to `.dev.vars` (or omit it — `wrangler dev` defaults to
+`ENVIRONMENT=development`, so the gate passes through).
+
 ## Local development
 
 You will need:

@@ -6,6 +6,7 @@ import apps from "./routes/apps";
 import bugReports from "./routes/bugReports";
 import credits from "./routes/credits";
 import fixJobs from "./routes/fixJobs";
+import { DEMO_CODE_HEADER, requireDemoCode } from "./lib/demoCode";
 
 // Bindings declared in wrangler.toml. Cloudflare injects these at runtime.
 export type Bindings = {
@@ -22,6 +23,14 @@ export type Bindings = {
   // Secrets (set via `wrangler secret put` in prod or .dev.vars locally)
   ANTHROPIC_API_KEY: string;
   GITHUB_DEMO_PAT: string;
+
+  // Shared demo access code. Mutating endpoints (POST /api/apps,
+  // /api/bug-reports, /api/credits/claim, /api/fix-jobs, /api/fix-jobs/:id/recover)
+  // require this value in the `X-CrowdPatch-Demo-Code` request header.
+  // - Unset + ENVIRONMENT=development → gate passes through (local dev).
+  // - Unset + non-dev → gate returns 503 demo_code_not_configured.
+  // See `src/lib/demoCode.ts`.
+  DEMO_ACCESS_CODE: string;
 
   // Managed Agent + Environment — populated by `npm run bootstrap:anthropic`
   // (one-shot script). Empty until bootstrap runs; the /api/fix-jobs route
@@ -51,12 +60,16 @@ export type Bindings = {
 const app = new Hono<{ Bindings: Bindings }>();
 
 // CORS for browser clients hitting /api/*. Allowed origins:
-//   - http://localhost:3000           (Next.js dev server)
-//   - https://*.pages.dev             (Cloudflare Pages preview/prod URLs)
-//   - https://crowdpatch.dev          (apex custom domain — landing + demo)
-//   - https://www.crowdpatch.dev      (www custom domain — same site)
+//   - http://localhost:3000                    (Next.js dev server)
+//   - https://crowdpatch-web.pages.dev         (this project's Pages prod URL)
+//   - https://*.crowdpatch-web.pages.dev       (this project's per-deploy preview hashes)
+//   - https://crowdpatch.dev                   (apex custom domain — landing + demo)
+//   - https://www.crowdpatch.dev               (www custom domain — same site)
 // Hostname matches use parsed URL hostname (not raw string) so a hostname
-// like `crowdpatch.dev.evil.com` is not mistaken for the apex.
+// like `crowdpatch.dev.evil.com` is not mistaken for the apex. We DO NOT
+// allow `*.pages.dev` broadly — that would let any Cloudflare Pages project
+// (incl. attacker-controlled ones) embed our API in a CORS-allowed page.
+// Self-hosters: change `crowdpatch-web` below to your own Pages project name.
 app.use(
   "/api/*",
   cors({
@@ -65,7 +78,8 @@ app.use(
       try {
         const u = new URL(origin);
         if (u.protocol === "https:") {
-          if (u.hostname.endsWith(".pages.dev")) return origin;
+          if (u.hostname === "crowdpatch-web.pages.dev") return origin;
+          if (u.hostname.endsWith(".crowdpatch-web.pages.dev")) return origin;
           if (u.hostname === "crowdpatch.dev") return origin;
           if (u.hostname === "www.crowdpatch.dev") return origin;
         }
@@ -75,9 +89,20 @@ app.use(
       return null;
     },
     allowMethods: ["GET", "POST", "OPTIONS"],
-    allowHeaders: ["Content-Type"],
+    allowHeaders: ["Content-Type", DEMO_CODE_HEADER],
   }),
 );
+
+// Demo access-code gate for mutating endpoints. Mounted AFTER cors() so
+// browsers' OPTIONS preflight is answered by the CORS middleware before
+// this gate runs. Read-only routes (balance, fix-job GET, SSE) stay
+// public — SSE specifically must stay public because native EventSource
+// cannot send custom headers.
+app.use("/api/apps", requireDemoCode);
+app.use("/api/bug-reports", requireDemoCode);
+app.use("/api/credits/claim", requireDemoCode);
+app.use("/api/fix-jobs", requireDemoCode);
+app.use("/api/fix-jobs/:id/recover", requireDemoCode);
 
 app.route("/api", apps);
 app.route("/api", bugReports);

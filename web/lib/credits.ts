@@ -2,6 +2,8 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 
+import { withDemoHeaders } from "@/lib/api";
+
 // Wire shapes mirror api/src/routes/credits.ts.
 export interface BalanceResponse {
   user_id: string;
@@ -84,12 +86,16 @@ export function useBalance(apiBase: string | undefined): BalanceState {
 
 export async function claimCredits(
   apiBase: string,
+  demoCode: string | null,
 ): Promise<ClaimResponse | null> {
   try {
-    const res = await fetch(`${apiBase}/api/credits/claim`, {
-      method: "POST",
-      cache: "no-store",
-    });
+    const res = await fetch(
+      `${apiBase}/api/credits/claim`,
+      withDemoHeaders(demoCode, {
+        method: "POST",
+        cache: "no-store",
+      }),
+    );
     if (!res.ok) return null;
     return (await res.json()) as ClaimResponse;
   } catch (err) {

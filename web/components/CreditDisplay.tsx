@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 
 import { claimCredits } from "@/lib/credits";
+import { useDemoCode } from "@/lib/useDemoCode";
 
 interface CreditDisplayProps {
   balance: number | null;
@@ -23,6 +24,7 @@ export default function CreditDisplay({
   apiBase,
   onAfterClaim,
 }: CreditDisplayProps) {
+  const { code: demoCode } = useDemoCode();
   const [claiming, setClaiming] = useState(false);
   const [pulse, setPulse] = useState<number | null>(null);
   const [claimMsg, setClaimMsg] = useState<string | null>(null);
@@ -50,7 +52,7 @@ export default function CreditDisplay({
     setClaiming(true);
     setClaimMsg(null);
     try {
-      const result = await claimCredits(apiBase);
+      const result = await claimCredits(apiBase, demoCode);
       if (!result) {
         setClaimMsg("Couldn't reach the credits API.");
         return;

@@ -3,8 +3,10 @@
 import { useEffect, useRef, useState } from "react";
 
 import EventLog from "@/components/EventLog";
+import { withDemoHeaders } from "@/lib/api";
 import { subscribeToFixJob } from "@/lib/eventStream";
 import { pollFixJobUntilTotals } from "@/lib/fixJobs";
+import { useDemoCode } from "@/lib/useDemoCode";
 import type { Card } from "@/types/cards";
 import type { FixJobSummary } from "@/types/fix-job";
 
@@ -58,6 +60,7 @@ export default function FixBugButton({
   onStatusChange,
   onBalanceShouldRefresh,
 }: FixBugButtonProps) {
+  const { code: demoCode } = useDemoCode();
   const [state, setState] = useState<State>({ status: "idle" });
   const [refundedAmount, setRefundedAmount] = useState<number | null>(null);
   const [usage, setUsage] = useState<FixJobSummary | null>(null);
@@ -124,7 +127,7 @@ export default function FixBugButton({
       try {
         const res = await fetch(
           `${apiBase}/api/fix-jobs/${cur.fixJobId}/recover`,
-          { method: "POST" },
+          withDemoHeaders(demoCode, { method: "POST" }),
         );
         data = (await res.json()) as typeof data;
       } catch (err) {
@@ -177,9 +180,12 @@ export default function FixBugButton({
     return () => clearInterval(interval);
     // onBalanceShouldRefresh is intentionally omitted — it's a stable callback
     // from the parent; including it would re-create the interval on every
-    // page render and effectively reset the watchdog timer.
+    // page render and effectively reset the watchdog timer. demoCode IS in
+    // deps so the probe always carries the latest header (resetting the
+    // 30s timer on a mid-run code change is harmless — recovery is a
+    // back-stop, not a critical liveness mechanism).
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [runningFixJobId]);
+  }, [runningFixJobId, demoCode]);
 
   // Kick off the post-terminal usage poll. Cancels any prior poll first so
   // overlapping clicks (e.g. fast Retry → new run completes → old poll still
@@ -215,11 +221,14 @@ export default function FixBugButton({
     setState({ status: "running", fixJobId: "", cards: [], startTs });
 
     try {
-      const res = await fetch(`${apiBase}/api/fix-jobs`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ bug_report_id: bugReportId }),
-      });
+      const res = await fetch(
+        `${apiBase}/api/fix-jobs`,
+        withDemoHeaders(demoCode, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ bug_report_id: bugReportId }),
+        }),
+      );
 
       if (!res.ok) {
         // 402 is the insufficient_credits gate; render a clearer message
