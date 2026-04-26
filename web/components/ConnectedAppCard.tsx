@@ -31,7 +31,7 @@ export default function ConnectedAppCard({
         <div className="flex shrink-0 flex-wrap items-center gap-2">
           {app.auth_mode === "user_pat" && (
             <span className="rounded-full border border-orange-500/40 bg-orange-500/[0.10] px-2 py-0.5 font-mono text-xs font-600 text-orange-100">
-              BYO PAT
+              custom repo
             </span>
           )}
           <span className="rounded-full border border-violet-500/40 bg-violet-500/[0.10] px-2 py-0.5 font-mono text-xs font-600 text-violet-100">
@@ -48,7 +48,7 @@ export default function ConnectedAppCard({
             onClick={onEdit}
             className="cp-btn cp-btn-sm cp-btn-ghost"
           >
-            Edit and connect a different app
+            Choose a different app
           </button>
         )}
       </div>

@@ -71,7 +71,7 @@ export default function SubmittedBugCard({
           onClick={onEdit}
           className="cp-btn cp-btn-sm cp-btn-ghost self-start"
         >
-          Edit and submit a different report
+          Edit bug report
         </button>
       )}
     </article>

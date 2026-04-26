@@ -86,7 +86,7 @@ export default function CreditDisplay({
             : "border-lime-500/40 bg-lime-500/[0.08] text-lime-100"
         }`}
         aria-live="polite"
-        title={`Each patch costs ${String(PATCH_COST_HINT)} credits.`}
+        title={`Each Claude patch costs ${String(PATCH_COST_HINT)} credits.`}
       >
         <span
           aria-hidden="true"
@@ -125,7 +125,7 @@ export default function CreditDisplay({
         disabled={claiming || !apiBase}
         className="cp-btn cp-btn-sm cp-btn-ghost hover:!border-lime-500/50 hover:!text-lime-200"
       >
-        {claiming ? "Claiming…" : "Claim free credits"}
+        {claiming ? "Claiming…" : "Claim demo credits"}
       </button>
 
       {claimMsg && (

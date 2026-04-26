@@ -8,9 +8,9 @@ interface StepIndicatorProps {
 }
 
 const STEPS: ReadonlyArray<{ n: 1 | 2 | 3 | 4; label: string }> = [
-  { n: 1, label: "Connect app" },
-  { n: 2, label: "Submit bug report" },
-  { n: 3, label: "CrowdPatch it" },
+  { n: 1, label: "Choose app" },
+  { n: 2, label: "File bug" },
+  { n: 3, label: "Claude patches" },
   { n: 4, label: "PR opened" },
 ];
 

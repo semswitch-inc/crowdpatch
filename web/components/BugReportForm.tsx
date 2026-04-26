@@ -117,11 +117,11 @@ export default function BugReportForm({
     >
       <div className="flex flex-col gap-1">
         <h2 id="bug_report_title" className="cp-h3">
-          Describe the bug for Claude.
+          File the bug report.
         </h2>
         <p className="cp-small">
-          Start with the demo bug, or edit it before patching. Your text lands
-          in the Managed Agent&apos;s prompt and the GitHub PR.
+          This is what Claude will read. Leave the demo report as-is for the
+          safest run, or edit it a little to prove the prompt is live.
         </p>
       </div>
 
@@ -163,7 +163,7 @@ export default function BugReportForm({
         label="Description"
         htmlFor="description"
         error={fieldErrors.description}
-        hint="What's broken, where, and how to reproduce it. Up to 2000 chars."
+        hint="Tell Claude what is broken, where it happens, and what should happen instead."
       >
         <textarea
           {...PASSWORD_MANAGER_IGNORE_PROPS}

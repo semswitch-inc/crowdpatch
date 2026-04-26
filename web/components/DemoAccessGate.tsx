@@ -54,12 +54,11 @@ export default function DemoAccessGate({ children }: DemoAccessGateProps) {
     >
       <div className="flex flex-col gap-1">
         <h2 id="demo_gate_title" className="cp-h3">
-          Enter the demo access code.
+          Enter the demo code.
         </h2>
         <p className="cp-small">
-          The live agent burns real Anthropic credits on every run, so the
-          public demo is gated behind a shared code. If you&apos;re a judge or
-          have been invited to test, paste it here.
+          This protects the live demo because every patch starts a real Claude
+          agent and can open a real pull request.
         </p>
       </div>
 
@@ -87,8 +86,7 @@ export default function DemoAccessGate({ children }: DemoAccessGateProps) {
           className="cp-input mono"
         />
         <span className="cp-field-hint">
-          Stored in sessionStorage for this tab only. Sent as the
-          X-CrowdPatch-Demo-Code header on protected POSTs.
+          Paste the code you were given. It stays in this browser tab.
         </span>
       </div>
 

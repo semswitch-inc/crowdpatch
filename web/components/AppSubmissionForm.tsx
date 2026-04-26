@@ -171,16 +171,16 @@ export default function AppSubmissionForm({
     >
       <div className="flex flex-col gap-1">
         <h2 id="app_submission_title" className="cp-h3">
-          Connect an app to CrowdPatch.
+          Choose the app Claude will patch.
         </h2>
         <p className="cp-small">
-          Start with the pre-filled jsdiff demo, or wire in your own repo. We
-          save this so a tester can file bugs against it next.
+          For the recording, use the pre-filled jsdiff repo. It has a real bug,
+          real tests, and opens a real pull request.
         </p>
       </div>
 
       <fieldset className="cp-field" aria-describedby="run_mode_hint">
-        <legend className="cp-field-label">Run mode</legend>
+        <legend className="cp-field-label">Patch target</legend>
         <div className="flex flex-col gap-2 rounded-md border border-ink-700 bg-ink-950/40 p-3">
           <label className="flex cursor-pointer items-start gap-2 text-sm text-ink-100">
             <input
@@ -193,14 +193,14 @@ export default function AppSubmissionForm({
             />
             <span className="flex flex-col">
               <span className="font-600">
-                Use the bundled jsdiff demo{" "}
+                Use the demo repo{" "}
                 <span className="font-mono text-xs text-lime-300">
                   (recommended)
                 </span>
               </span>
               <span className="cp-small">
-                Pre-filled with the seeded `semswitch-inc/jsdiff-demo` repo.
-                Reliable end-to-end PR every run; no GitHub PAT required.
+                Best for the video: real repo, real planted bug, no GitHub token
+                needed.
               </span>
             </span>
           </label>
@@ -214,11 +214,10 @@ export default function AppSubmissionForm({
               className="mt-1"
             />
             <span className="flex flex-col">
-              <span className="font-600">Bring your own repo</span>
+              <span className="font-600">Try your own repo</span>
               <span className="cp-small">
-                Patch any GitHub repo you control. You&apos;ll be prompted for a
-                fine-grained GitHub PAT before the patch run. The PAT isn&apos;t
-                stored — it lives only in this browser tab.
+                Experimental path. Paste a GitHub token before the run so
+                CrowdPatch can clone, patch, and open a PR.
               </span>
             </span>
           </label>
@@ -228,13 +227,13 @@ export default function AppSubmissionForm({
             id="run_mode_hint"
             className="cp-card tint-warning bar-warning pad-md text-sm text-orange-100"
           >
-            <strong className="font-600 text-orange-50">Heads up:</strong>{" "}
-            generate a <em>fine-grained</em> GitHub PAT scoped to a single repo
-            with <span className="font-mono text-xs">Contents: read+write</span>{" "}
-            and{" "}
-            <span className="font-mono text-xs">Pull requests: read+write</span>
-            . You&apos;ll paste it on the next step. Reloading the run page
-            loses the PAT and credits will be refunded.
+            <strong className="font-600 text-orange-50">
+              For custom repos:
+            </strong>{" "}
+            use a fine-grained GitHub token for one repo only. It needs{" "}
+            <span className="font-mono text-xs">Contents</span> and{" "}
+            <span className="font-mono text-xs">Pull requests</span> access.
+            CrowdPatch never stores it.
           </div>
         )}
       </fieldset>
@@ -264,8 +263,8 @@ export default function AppSubmissionForm({
         error={fieldErrors.github_repo_url}
         hint={
           runMode === "user_pat"
-            ? "Your repo. Make sure your fine-grained PAT (next step) grants Contents: read+write and Pull requests: read+write to this repo."
-            : "Pre-filled with the bundled jsdiff demo. The reliable demo path uses this repo and the seeded server-held bot PAT."
+            ? "Use a repo you control. You will paste a temporary GitHub token before Claude starts."
+            : "Leave this as-is for the reliable jsdiff demo."
         }
       >
         <input
@@ -286,7 +285,7 @@ export default function AppSubmissionForm({
         label="Default branch"
         htmlFor="default_branch"
         error={fieldErrors.default_branch}
-        hint="Used as the PR base branch."
+        hint="Claude opens the pull request against this branch."
       >
         <input
           {...PASSWORD_MANAGER_IGNORE_PROPS}
@@ -308,7 +307,7 @@ export default function AppSubmissionForm({
           onClick={() => setIsAdvancedOpen(!isAdvancedOpen)}
           className="flex w-full cursor-pointer list-none items-center justify-between px-3 py-2 font-mono text-xs font-600 uppercase tracking-[0.12em] text-ink-300 hover:text-orange-300"
         >
-          <span>Advanced toolchain (pre-filled)</span>
+          <span>Advanced setup for Claude</span>
           <span
             className={`text-ink-500 transition-transform ${isAdvancedOpen ? "rotate-90" : ""}`}
           >
@@ -352,7 +351,7 @@ export default function AppSubmissionForm({
               <Field
                 label="Project notes / agent notes"
                 htmlFor="agent_notes"
-                hint="Repo idiosyncrasies that don't fit the structured commands. Inlined verbatim into the agent prompt."
+                hint="Extra repo instructions Claude should read before patching."
               >
                 <textarea
                   {...PASSWORD_MANAGER_IGNORE_PROPS}

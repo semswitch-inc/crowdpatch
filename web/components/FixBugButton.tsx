@@ -304,7 +304,7 @@ export default function FixBugButton({
           const detail = await extractErrorDetail(res);
           // Refresh in case the balance moved since the chip last rendered.
           onBalanceShouldRefresh?.();
-          throw new Error(`${detail} — click "Claim free credits" above.`);
+          throw new Error(`${detail} — click "Claim demo credits" above.`);
         }
         throw new Error(await extractErrorDetail(res));
       }
@@ -428,7 +428,7 @@ export default function FixBugButton({
         {authMode === "user_pat" && (
           <div className="cp-card pad-md flex flex-col gap-2">
             <label htmlFor="repo_token" className="cp-field-label">
-              GitHub fine-grained PAT
+              GitHub token for your repo
             </label>
             <input
               {...PAT_INPUT_IGNORE_PROPS}
@@ -443,24 +443,22 @@ export default function FixBugButton({
               className="cp-input mono"
             />
             <span className="cp-field-hint">
-              Required permissions:{" "}
+              Needed only for custom repos. Required permissions:{" "}
               <span className="font-mono text-xs">Contents: read+write</span>{" "}
               and{" "}
               <span className="font-mono text-xs">
                 Pull requests: read+write
               </span>
-              , scoped to this repo. Never stored — kept only in this browser
-              tab.
+              . CrowdPatch never stores this token.
             </span>
             {!repoTokenValid && repoToken.length > 0 && (
               <span className="cp-field-error">
-                Must start with <span className="font-mono">github_pat_</span>{" "}
-                and be a valid fine-grained PAT.
+                Token should start with{" "}
+                <span className="font-mono">github_pat_</span>.
               </span>
             )}
             <span className="font-mono text-xs text-red-300">
-              Don&apos;t reload this tab during the run — recovery isn&apos;t
-              possible without your PAT.
+              Keep this tab open while Claude works.
             </span>
           </div>
         )}
@@ -495,7 +493,7 @@ export default function FixBugButton({
         <div className="cp-card tint-agent bar-agent pad-md flex items-center gap-3">
           <Spinner />
           <span className="text-base font-600 text-violet-100">
-            Agent working…
+            Claude is patching the repo…
           </span>
           {state.fixJobId && (
             <span className="ml-auto rounded border border-violet-500/30 bg-ink-950/40 px-2 py-0.5 font-mono text-xs text-violet-200">
@@ -504,8 +502,8 @@ export default function FixBugButton({
           )}
         </div>
         <p className="cp-small">
-          Live from the Managed Agent. Typically 1–5 minutes; safe to keep this
-          tab open.
+          Live agent stream. You will see the setup, tests, commit, and PR link
+          here.
         </p>
         <EventLog cards={state.cards} startTs={state.startTs} />
       </div>

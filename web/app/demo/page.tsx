@@ -159,7 +159,7 @@ function HeroExperience() {
           />
           <FixBugButton
             bugReportId={submitted.id}
-            ctaLabel="CrowdPatch it with Claude"
+            ctaLabel="Start Claude patch run"
             authMode={connected.auth_mode}
             onStatusChange={setFixStatus}
             onBalanceShouldRefresh={() => {
@@ -212,18 +212,18 @@ export default function Demo() {
           {/* Eyebrow tag — vibrant, not whisper-grey */}
           <span className="inline-flex items-center gap-2 rounded-full border border-orange-500/40 bg-orange-500/10 px-3 py-1 font-mono text-[11px] font-600 uppercase tracking-[0.18em] text-orange-300">
             <span className="h-1.5 w-1.5 rounded-full bg-orange-400 shadow-[0_0_8px] shadow-orange-400" />
-            Closed-loop bug-fix economy
+            Live CrowdPatch demo
           </span>
 
           <h1 className="max-w-3xl text-5xl font-700 leading-[1.05] tracking-[-0.02em] text-ink-50 sm:text-[64px]">
-            Community-sourced bugs.
+            File a bug.
             <br />
-            <span className="text-orange-400">AI-shipped fixes.</span>
+            <span className="text-orange-400">Claude opens the PR.</span>
           </h1>
 
           <p className="max-w-lg text-base leading-7 text-ink-200 mx-auto">
-            Watch a Claude Managed Agent (Opus 4.6) investigate the bug, write a
-            fix, and open a real GitHub PR — live, in real time.
+            Choose a repo, submit a bug report, spend demo credits, and watch
+            Claude patch the code in a real sandbox.
           </p>
         </section>
 
@@ -240,10 +240,12 @@ export default function Demo() {
         {/* ── How this works ─────────────────────────────── */}
         <section className="flex max-w-2xl mx-auto flex-col gap-3 border-t border-ink-800 pt-8 text-sm leading-6 text-ink-200">
           <h2 className="font-mono text-xs font-600 uppercase tracking-[0.18em] text-violet-300">
-            How this works
+            What you are about to see
           </h2>
           <p>
-            This page is open source —{" "}
+            The pre-filled jsdiff path is the safest recording flow: real repo,
+            real planted bug, real Claude Managed Agent run, and a real GitHub
+            PR at the end. This page is open source —{" "}
             <Link
               href={REPO_URL}
               target="_blank"
@@ -252,8 +254,7 @@ export default function Demo() {
             >
               view source on GitHub
             </Link>
-            . It&apos;s also the engine behind CrowdPatch, a closed-loop bug-fix
-            economy launching soon. Built for the Built With Opus 4.7 Hackathon.
+            .
           </p>
         </section>
       </main>
