@@ -205,20 +205,20 @@ export default function Demo() {
 
       {/* ── Main ───────────────────────────────────────────── */}
       <main className="cp-main cp-main-tool flex-1">
-        <section className="flex flex-col items-start gap-5 text-left">
+        <section className="flex flex-col items-center gap-5 text-center mx-auto max-w-[680px]">
           {/* Eyebrow tag — vibrant, not whisper-grey */}
           <span className="inline-flex items-center gap-2 rounded-full border border-orange-500/40 bg-orange-500/10 px-3 py-1 font-mono text-[11px] font-600 uppercase tracking-[0.18em] text-orange-300">
             <span className="h-1.5 w-1.5 rounded-full bg-orange-400 shadow-[0_0_8px] shadow-orange-400" />
             Closed-loop bug-fix economy
           </span>
 
-          <h1 className="max-w-2xl text-5xl font-700 leading-[1.05] tracking-[-0.02em] text-ink-50 sm:text-[64px]">
+          <h1 className="max-w-3xl text-5xl font-700 leading-[1.05] tracking-[-0.02em] text-ink-50 sm:text-[64px]">
             Community-sourced bugs.
             <br />
             <span className="text-orange-400">AI-shipped fixes.</span>
           </h1>
 
-          <p className="max-w-md text-base leading-7 text-ink-200">
+          <p className="max-w-lg text-base leading-7 text-ink-200 mx-auto">
             Watch a Claude Managed Agent (Opus 4.6) investigate the bug, write a
             fix, and open a real GitHub PR — live, in real time.
           </p>
@@ -235,7 +235,7 @@ export default function Demo() {
         </Suspense>
 
         {/* ── How this works ─────────────────────────────── */}
-        <section className="flex max-w-xl flex-col gap-3 border-t border-ink-800 pt-8 text-sm leading-6 text-ink-200">
+        <section className="flex max-w-2xl mx-auto flex-col gap-3 border-t border-ink-800 pt-8 text-sm leading-6 text-ink-200">
           <h2 className="font-mono text-xs font-600 uppercase tracking-[0.18em] text-violet-300">
             How this works
           </h2>

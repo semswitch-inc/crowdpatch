@@ -50,7 +50,7 @@ export default function DemoAccessGate({ children }: DemoAccessGateProps) {
       aria-labelledby="demo_gate_title"
       autoComplete="off"
       data-form-type="other"
-      className="cp-card pad-md flex w-full max-w-md flex-col gap-4"
+      className="cp-card pad-md flex w-full max-w-md mx-auto flex-col gap-4"
     >
       <div className="flex flex-col gap-1">
         <h2 id="demo_gate_title" className="cp-h3">

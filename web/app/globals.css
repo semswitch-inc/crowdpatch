@@ -1837,9 +1837,23 @@ pre {
  * the landing's marketing rhythm. */
 
 .cp-main.cp-main-tool {
-  max-width: 760px;
-  padding: 48px 24px 96px;
-  gap: 32px;
+  max-width: 860px;
+  margin: 0 auto;
+  padding: 64px 40px 96px;
+  gap: 48px;
+}
+
+/* Center content inside the demo tool page */
+.cp-main.cp-main-tool > section:first-child {
+  align-items: center;
+  text-align: center;
+  width: 100%;
+}
+
+.cp-main.cp-main-tool section:last-child {
+  max-width: 640px;
+  margin-left: auto;
+  margin-right: auto;
 }
 
 /* Form primitives ------------------------------------------------ */
